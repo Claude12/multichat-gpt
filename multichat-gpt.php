@@ -3,7 +3,7 @@
  * Plugin Name: MultiChat GPT
  * Plugin URI: https://example.com/multichat-gpt
  * Description: ChatGPT-powered multilingual chat widget for WordPress Multisite + WPML
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Define plugin constants
  */
-define( 'MULTICHAT_GPT_VERSION', '1.0.0' );
+define( 'MULTICHAT_GPT_VERSION', '1.1.0' );
 define( 'MULTICHAT_GPT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MULTICHAT_GPT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MULTICHAT_GPT_BASENAME', plugin_basename( __FILE__ ) );
@@ -40,11 +40,6 @@ class MultiChat_GPT {
 	 * @var self
 	 */
 	private static $instance = null;
-
-	/**
-	 * ChatGPT API Key (CHANGE THIS)
-	 */
-	private $api_key = 'sk-YOUR_API_KEY_HERE';
 
 	/**
 	 * ChatGPT API Endpoint
@@ -85,7 +80,9 @@ class MultiChat_GPT {
 
 		// Handle AJAX requests
 		add_action( 'wp_ajax_multichat_scan_sitemap', [ $this, 'handle_scan_sitemap' ] );
+		add_action( 'wp_ajax_multichat_scan_language', [ $this, 'handle_scan_language' ] );
 		add_action( 'wp_ajax_multichat_clear_cache', [ $this, 'handle_clear_cache' ] );
+		add_action( 'wp_ajax_multichat_clear_language_cache', [ $this, 'handle_clear_language_cache' ] );
 
 		// Activation/Deactivation hooks
 		register_activation_hook( __FILE__, [ $this, 'activate_plugin' ] );
@@ -99,6 +96,7 @@ class MultiChat_GPT {
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-sitemap-scanner.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-content-crawler.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
 	}
 
 	/**
@@ -172,11 +170,11 @@ class MultiChat_GPT {
 			);
 		}
 
-		// Try to get knowledge base from cache first
+		// Get knowledge base for the user's language
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
-		$kb_chunks = MultiChat_KB_Builder::get_cached_knowledge_base();
+		$kb_chunks = MultiChat_KB_Builder::get_cached_knowledge_base( $language );
 
-		// If no cached KB, use static knowledge base
+		// If no cached KB for this language, use static knowledge base
 		if ( ! $kb_chunks ) {
 			$kb_chunks = $this->get_knowledge_base_chunks( $language );
 		}
@@ -225,6 +223,18 @@ class MultiChat_GPT {
 				[
 					'title'   => 'Getting Started',
 					'content' => 'To get started with our services, please visit our documentation.',
+				],
+			],
+			'ar' => [
+				[
+					'title'   => 'أهلا وسهلا',
+					'content' => 'أهلا وسهلا بك في دعم العملاء. كيف يمكننا مساعدتك اليوم؟',
+				],
+			],
+			'fr' => [
+				[
+					'title'   => 'Bienvenue',
+					'content' => 'Bienvenue dans notre support client. Comment pouvons-nous vous aider?',
 				],
 			],
 		];
@@ -358,7 +368,7 @@ class MultiChat_GPT {
 	}
 
 	/**
-	 * Handle sitemap scan AJAX request
+	 * Handle sitemap scan for all languages
 	 */
 	public function handle_scan_sitemap() {
 		// Check nonce
@@ -371,42 +381,118 @@ class MultiChat_GPT {
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
-		// Get sitemap URL
-		$sitemap_url = isset( $_POST['sitemap_url'] ) ? esc_url_raw( $_POST['sitemap_url'] ) : site_url( '/sitemap.xml' );
-
-		if ( empty( $sitemap_url ) ) {
-			wp_send_json_error( 'Invalid sitemap URL' );
-		}
-
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-sitemap-scanner.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
 
-		// Check if external sitemap
-		$external = strpos( $sitemap_url, home_url() ) === false;
+		// Get all language sitemaps
+		if ( MultiChat_WPML_Scanner::is_wpml_active() ) {
+			// Scan all languages
+			$all_sitemaps = MultiChat_WPML_Scanner::get_all_language_sitemaps();
+			$total_pages = 0;
+			$languages_scanned = [];
 
-		// Scan sitemap
+			foreach ( $all_sitemaps as $lang_code => $sitemap_url ) {
+				$external = strpos( $sitemap_url, home_url() ) === false;
+				$urls = MultiChat_Sitemap_Scanner::get_urls_from_sitemap( $sitemap_url, $external );
+
+				if ( ! empty( $urls ) ) {
+					$kb = MultiChat_KB_Builder::build_kb_from_urls( $urls, $lang_code );
+					$total_pages += count( $kb );
+					$languages_scanned[] = [
+						'language' => $lang_code,
+						'pages'    => count( $kb ),
+					];
+				}
+			}
+
+			if ( empty( $languages_scanned ) ) {
+				wp_send_json_error( 'No pages found in any sitemap' );
+			}
+
+			wp_send_json_success( [
+				'message'           => sprintf( 'Successfully scanned %d pages across %d languages', $total_pages, count( $languages_scanned ) ),
+				'total_pages'       => $total_pages,
+				'languages_scanned' => $languages_scanned,
+			] );
+		} else {
+			// Single language fallback
+			$sitemap_url = isset( $_POST['sitemap_url'] ) ? esc_url_raw( $_POST['sitemap_url'] ) : site_url( '/sitemap.xml' );
+
+			if ( empty( $sitemap_url ) ) {
+				wp_send_json_error( 'Invalid sitemap URL' );
+			}
+
+			$external = strpos( $sitemap_url, home_url() ) === false;
+			$urls = MultiChat_Sitemap_Scanner::get_urls_from_sitemap( $sitemap_url, $external );
+
+			if ( empty( $urls ) ) {
+				wp_send_json_error( 'No pages found in sitemap' );
+			}
+
+			$kb = MultiChat_KB_Builder::build_kb_from_urls( $urls, 'en' );
+
+			if ( empty( $kb ) ) {
+				wp_send_json_error( 'Failed to extract content from pages' );
+			}
+
+			wp_send_json_success( [
+				'message'       => sprintf( 'Successfully scanned %d pages', count( $kb ) ),
+				'pages_scanned' => count( $kb ),
+			] );
+		}
+	}
+
+	/**
+	 * Handle language-specific scan
+	 */
+	public function handle_scan_language() {
+		// Check nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'multichat_scan_language_nonce' ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		$language = isset( $_POST['language'] ) ? sanitize_key( $_POST['language'] ) : 'en';
+
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-sitemap-scanner.php';
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
+
+		// Get sitemap for the language
+		$sitemap_url = MultiChat_WPML_Scanner::get_language_sitemap_url( $language );
+
+		if ( empty( $sitemap_url ) ) {
+			wp_send_json_error( 'Invalid language code' );
+		}
+
+		$external = strpos( $sitemap_url, home_url() ) === false;
 		$urls = MultiChat_Sitemap_Scanner::get_urls_from_sitemap( $sitemap_url, $external );
 
 		if ( empty( $urls ) ) {
-			error_log( 'MultiChat GPT: No URLs found in sitemap: ' . $sitemap_url );
-			wp_send_json_error( 'No pages found in sitemap. Check your sitemap URL.' );
+			wp_send_json_error( 'No pages found in sitemap for this language' );
 		}
 
-		// Build knowledge base (this clears old cache first)
-		$kb = MultiChat_KB_Builder::build_kb_from_urls( $urls );
+		// Build KB for this language
+		$kb = MultiChat_KB_Builder::build_kb_from_urls( $urls, $language );
 
 		if ( empty( $kb ) ) {
-			wp_send_json_error( 'Failed to extract content from pages. Check error logs.' );
+			wp_send_json_error( 'Failed to extract content from pages' );
 		}
 
 		wp_send_json_success( [
-			'message'        => sprintf( 'Successfully scanned and indexed %d pages', count( $kb ) ),
-			'pages_scanned'  => count( $kb ),
+			'message'       => sprintf( 'Successfully scanned %d pages for %s', count( $kb ), $language ),
+			'pages_scanned' => count( $kb ),
+			'language'      => $language,
 		] );
 	}
 
 	/**
-	 * Handle clear cache AJAX request
+	 * Handle clear all caches
 	 */
 	public function handle_clear_cache() {
 		// Check nonce
@@ -419,13 +505,41 @@ class MultiChat_GPT {
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
-		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
 
-		// Clear the cache
-		MultiChat_KB_Builder::clear_cache();
+		if ( MultiChat_WPML_Scanner::is_wpml_active() ) {
+			MultiChat_WPML_Scanner::clear_all_caches();
+		} else {
+			require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
+			MultiChat_KB_Builder::clear_cache();
+		}
 
 		wp_send_json_success( [
-			'message' => __( 'Knowledge base cleared successfully. Reverting to default responses.', 'multichat-gpt' ),
+			'message' => __( 'All knowledge bases cleared successfully.', 'multichat-gpt' ),
+		] );
+	}
+
+	/**
+	 * Handle language-specific cache clear
+	 */
+	public function handle_clear_language_cache() {
+		// Check nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'multichat_clear_language_nonce' ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		$language = isset( $_POST['language'] ) ? sanitize_key( $_POST['language'] ) : 'en';
+
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
+		MultiChat_WPML_Scanner::clear_language_cache( $language );
+
+		wp_send_json_success( [
+			'message' => sprintf( __( '%s knowledge base cleared successfully.', 'multichat-gpt' ), $language ),
 		] );
 	}
 
@@ -475,8 +589,8 @@ class MultiChat_GPT {
 	 */
 	private function get_current_language() {
 		// Check for WPML
-		if ( function_exists( 'wpml_get_default_language' ) ) {
-			return apply_filters( 'wpml_current_language', null );
+		if ( function_exists( 'wpml_current_language' ) ) {
+			return wpml_current_language();
 		}
 
 		return 'en';
@@ -602,74 +716,129 @@ class MultiChat_GPT {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'multichat-gpt' ) );
 		}
 
-		$sitemap_url = get_option( 'multichat_gpt_sitemap_url', site_url( '/sitemap.xml' ) );
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
-		
-		$kb_stats = MultiChat_KB_Builder::get_kb_stats();
-		$is_cached = MultiChat_KB_Builder::is_kb_cached();
+
+		$is_wpml_active = MultiChat_WPML_Scanner::is_wpml_active();
+		$sitemap_url = get_option( 'multichat_gpt_sitemap_url', site_url( '/sitemap.xml' ) );
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'MultiChat GPT Settings', 'multichat-gpt' ); ?></h1>
 
-			<!-- KB Status Card -->
-			<div class="notice notice-info" style="margin-top: 20px; padding: 20px; border-left: 4px solid #2563eb;">
-				<h3><?php esc_html_e( 'Knowledge Base Status', 'multichat-gpt' ); ?></h3>
-				<table style="width: 100%; margin-top: 10px;">
-					<tr>
-						<td style="padding: 8px;"><strong><?php esc_html_e( 'Pages Indexed:', 'multichat-gpt' ); ?></strong></td>
-						<td style="padding: 8px;"><span style="font-size: 18px; color: #2563eb; font-weight: bold;"><?php echo intval( $kb_stats['pages_indexed'] ); ?></span></td>
-					</tr>
-					<tr>
-						<td style="padding: 8px;"><strong><?php esc_html_e( 'Cache Status:', 'multichat-gpt' ); ?></strong></td>
-						<td style="padding: 8px;">
-							<?php 
-							if ( $is_cached ) {
-								echo '<span style="color: #22c55e; font-weight: bold;">✓ ' . esc_html__( 'Active (Permanent)', 'multichat-gpt' ) . '</span>';
-							} else {
-								echo '<span style="color: #f59e0b; font-weight: bold;">⚠ ' . esc_html__( 'No cache', 'multichat-gpt' ) . '</span>';
-							}
-							?>
-						</td>
-					</tr>
-					<tr>
-						<td style="padding: 8px;"><strong><?php esc_html_e( 'Last Scanned:', 'multichat-gpt' ); ?></strong></td>
-						<td style="padding: 8px;"><?php echo esc_html( $kb_stats['last_scanned'] ); ?></td>
-					</tr>
-					<tr>
-						<td style="padding: 8px;"><strong><?php esc_html_e( 'Expires:', 'multichat-gpt' ); ?></strong></td>
-						<td style="padding: 8px;">
-							<span style="color: #22c55e; font-weight: bold;">
-								<?php esc_html_e( 'Never (until manually rescanned)', 'multichat-gpt' ); ?>
-							</span>
-						</td>
-					</tr>
-				</table>
-			</div>
+			<?php if ( $is_wpml_active ) : ?>
+				<!-- WPML Multi-Language Interface -->
+				<div style="background: #e3f2fd; padding: 20px; margin: 20px 0; border-left: 4px solid #2196f3;">
+					<h2><?php esc_html_e( 'Multi-Language Knowledge Base', 'multichat-gpt' ); ?></h2>
+					<p><?php esc_html_e( 'WPML detected. Manage knowledge bases for each language separately.', 'multichat-gpt' ); ?></p>
 
-			<!-- Scan Button -->
-			<div style="background: #f1f1f1; padding: 20px; margin: 20px 0; border-left: 4px solid #2563eb;">
-				<h3><?php esc_html_e( 'Scan Website Sitemap', 'multichat-gpt' ); ?></h3>
-				<p><?php esc_html_e( 'Click the button below to scan your website sitemap and build/update the knowledge base. The cache will remain permanent until you scan again.', 'multichat-gpt' ); ?></p>
-				<button id="multichat-scan-btn" class="button button-primary" style="padding: 10px 20px; font-size: 14px;">
-					<?php esc_html_e( 'Scan Sitemap Now', 'multichat-gpt' ); ?>
-				</button>
-				<span id="multichat-scan-status" style="margin-left: 10px; display: none;"></span>
-			</div>
+					<?php
+					$stats = MultiChat_WPML_Scanner::get_multilingual_stats();
+					$languages = MultiChat_WPML_Scanner::get_active_languages();
+					?>
 
-			<!-- Clear Cache Option -->
-			<?php if ( $is_cached ) { ?>
-				<div style="background: #fff3cd; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107;">
-					<h3><?php esc_html_e( 'Clear Knowledge Base', 'multichat-gpt' ); ?></h3>
-					<p><?php esc_html_e( 'If you want to remove the cached knowledge base and revert to default responses, click below.', 'multichat-gpt' ); ?></p>
-					<button id="multichat-clear-btn" class="button button-secondary" style="padding: 10px 20px; font-size: 14px; color: #d32f2f; border-color: #d32f2f;">
-						<?php esc_html_e( 'Clear Cache', 'multichat-gpt' ); ?>
-					</button>
-					<span id="multichat-clear-status" style="margin-left: 10px; display: none;"></span>
+					<table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+						<thead>
+							<tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+								<th style="padding: 10px; text-align: left;"><?php esc_html_e( 'Language', 'multichat-gpt' ); ?></th>
+								<th style="padding: 10px; text-align: center;"><?php esc_html_e( 'Status', 'multichat-gpt' ); ?></th>
+								<th style="padding: 10px; text-align: center;"><?php esc_html_e( 'Pages Indexed', 'multichat-gpt' ); ?></th>
+								<th style="padding: 10px; text-align: left;"><?php esc_html_e( 'Last Scanned', 'multichat-gpt' ); ?></th>
+								<th style="padding: 10px; text-align: center;"><?php esc_html_e( 'Actions', 'multichat-gpt' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $stats as $lang_code => $stat ) : ?>
+								<tr style="border-bottom: 1px solid #eee;">
+									<td style="padding: 10px;"><strong><?php echo esc_html( $stat['language'] ); ?></strong> (<?php echo esc_html( $stat['language_code'] ); ?>)</td>
+									<td style="padding: 10px; text-align: center;">
+										<?php
+										if ( $stat['cached'] ) {
+											echo '<span style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 3px;">✓ Cached</span>';
+										} else {
+											echo '<span style="background: #f44336; color: white; padding: 4px 8px; border-radius: 3px;">✗ Not Cached</span>';
+										}
+										?>
+									</td>
+									<td style="padding: 10px; text-align: center;"><strong><?php echo intval( $stat['pages_indexed'] ); ?></strong></td>
+									<td style="padding: 10px;"><?php echo esc_html( $stat['last_scanned'] ); ?></td>
+									<td style="padding: 10px; text-align: center;">
+										<button class="multichat-scan-lang-btn button button-primary" data-language="<?php echo esc_attr( $lang_code ); ?>" style="padding: 4px 8px; font-size: 12px;">
+											<?php esc_html_e( 'Scan', 'multichat-gpt' ); ?>
+										</button>
+										<?php if ( $stat['cached'] ) : ?>
+											<button class="multichat-clear-lang-btn button button-secondary" data-language="<?php echo esc_attr( $lang_code ); ?>" style="padding: 4px 8px; font-size: 12px; margin-left: 5px;">
+												<?php esc_html_e( 'Clear', 'multichat-gpt' ); ?>
+											</button>
+										<?php endif; ?>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+
+					<p style="margin-top: 15px;">
+						<button id="multichat-scan-all-btn" class="button button-primary" style="padding: 10px 20px; font-size: 14px; margin-right: 10px;">
+							<?php esc_html_e( 'Scan All Languages', 'multichat-gpt' ); ?>
+						</button>
+						<button id="multichat-clear-all-btn" class="button button-secondary" style="padding: 10px 20px; font-size: 14px;">
+							<?php esc_html_e( 'Clear All Caches', 'multichat-gpt' ); ?>
+						</button>
+					</p>
+					<div id="multichat-status" style="margin-top: 15px; display: none;"></div>
 				</div>
-			<?php } ?>
+			<?php else : ?>
+				<!-- Single Language Interface -->
+				<div class="notice notice-info" style="margin-top: 20px; padding: 20px; border-left: 4px solid #2563eb;">
+					<h3><?php esc_html_e( 'Knowledge Base Status', 'multichat-gpt' ); ?></h3>
+					<?php
+					$kb_stats = MultiChat_KB_Builder::get_kb_stats();
+					$is_cached = MultiChat_KB_Builder::is_kb_cached();
+					?>
+					<table style="width: 100%; margin-top: 10px;">
+						<tr>
+							<td style="padding: 8px;"><strong><?php esc_html_e( 'Pages Indexed:', 'multichat-gpt' ); ?></strong></td>
+							<td style="padding: 8px;"><span style="font-size: 18px; color: #2563eb; font-weight: bold;"><?php echo intval( $kb_stats['pages_indexed'] ); ?></span></td>
+						</tr>
+						<tr>
+							<td style="padding: 8px;"><strong><?php esc_html_e( 'Cache Status:', 'multichat-gpt' ); ?></strong></td>
+							<td style="padding: 8px;">
+								<?php 
+								if ( $is_cached ) {
+									echo '<span style="color: #22c55e; font-weight: bold;">✓ ' . esc_html__( 'Active (Permanent)', 'multichat-gpt' ) . '</span>';
+								} else {
+									echo '<span style="color: #f59e0b; font-weight: bold;">⚠ ' . esc_html__( 'No cache', 'multichat-gpt' ) . '</span>';
+								}
+								?>
+							</td>
+						</tr>
+						<tr>
+							<td style="padding: 8px;"><strong><?php esc_html_e( 'Last Scanned:', 'multichat-gpt' ); ?></strong></td>
+							<td style="padding: 8px;"><?php echo esc_html( $kb_stats['last_scanned'] ); ?></td>
+						</tr>
+					</table>
+				</div>
+
+				<div style="background: #f1f1f1; padding: 20px; margin: 20px 0; border-left: 4px solid #2563eb;">
+					<h3><?php esc_html_e( 'Scan Website Sitemap', 'multichat-gpt' ); ?></h3>
+					<button id="multichat-scan-btn" class="button button-primary" style="padding: 10px 20px; font-size: 14px;">
+						<?php esc_html_e( 'Scan Sitemap Now', 'multichat-gpt' ); ?>
+					</button>
+					<span id="multichat-scan-status" style="margin-left: 10px; display: none;"></span>
+				</div>
+
+				<?php if ( $is_cached ) : ?>
+					<div style="background: #fff3cd; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107;">
+						<h3><?php esc_html_e( 'Clear Knowledge Base', 'multichat-gpt' ); ?></h3>
+						<button id="multichat-clear-btn" class="button button-secondary" style="padding: 10px 20px; font-size: 14px; color: #d32f2f; border-color: #d32f2f;">
+							<?php esc_html_e( 'Clear Cache', 'multichat-gpt' ); ?>
+						</button>
+						<span id="multichat-clear-status" style="margin-left: 10px; display: none;"></span>
+					</div>
+				<?php endif; ?>
+			<?php endif; ?>
 
 			<!-- Settings Form -->
-			<form method="POST" action="options.php">
+			<form method="POST" action="options.php" style="margin-top: 30px;">
 				<?php
 				settings_fields( 'multichat_gpt_group' );
 				do_settings_sections( 'multichat-gpt-settings' );
@@ -680,84 +849,207 @@ class MultiChat_GPT {
 
 		<script>
 			jQuery(document).ready(function($) {
-				// Scan sitemap button
-				$('#multichat-scan-btn').on('click', function() {
-					var $btn = $(this);
-					var $status = $('#multichat-scan-status');
+				<?php if ( $is_wpml_active ) : ?>
+					// Scan all languages
+					$('#multichat-scan-all-btn').on('click', function() {
+						var $btn = $(this);
+						var $status = $('#multichat-status');
+						$btn.prop('disabled', true);
+						$status.show().html('<p style="color: #1976d2;"><strong>⏳ Scanning all languages...</strong></p>');
 
-					$btn.prop('disabled', true);
-					$status.show().text('<?php echo esc_js( __( 'Scanning...', 'multichat-gpt' ) ); ?>');
-
-					$.ajax({
-						url: ajaxurl,
-						method: 'POST',
-						data: {
-							action: 'multichat_scan_sitemap',
-							nonce: '<?php echo wp_create_nonce( 'multichat_scan_nonce' ); ?>',
-							sitemap_url: '<?php echo esc_js( $sitemap_url ); ?>'
-						},
-						success: function(response) {
-							if (response.success) {
-								$status.addClass('notice notice-success').html(
-									'✓ ' + response.data.message + '<br/>' +
-									'<?php echo esc_js( __( 'Knowledge base is now permanent until next manual scan.', 'multichat-gpt' ) ); ?>'
-								);
-								// Reload page after 2 seconds to show updated stats
-								setTimeout(function() {
-									location.reload();
-								}, 2000);
-							} else {
-								$status.addClass('notice notice-error').text('Error: ' + response.data);
+						$.ajax({
+							url: ajaxurl,
+							method: 'POST',
+							data: {
+								action: 'multichat_scan_sitemap',
+								nonce: '<?php echo wp_create_nonce( 'multichat_scan_nonce' ); ?>'
+							},
+							success: function(response) {
+								if (response.success) {
+									var html = '<div style="background: #c8e6c9; padding: 10px; border-radius: 3px;"><strong>✓ ' + response.data.message + '</strong>';
+									if (response.data.languages_scanned) {
+										html += '<ul>';
+										$.each(response.data.languages_scanned, function(i, lang) {
+											html += '<li>' + lang.language + ': ' + lang.pages + ' pages</li>';
+										});
+										html += '</ul>';
+									}
+									html += '</div>';
+									$status.html(html);
+									setTimeout(function() { location.reload(); }, 2000);
+								} else {
+									$status.html('<div style="background: #ffcdd2; padding: 10px; border-radius: 3px;"><strong>✗ Error: ' + response.data + '</strong></div>');
+								}
+							},
+							complete: function() {
+								$btn.prop('disabled', false);
 							}
-						},
-						error: function() {
-							$status.addClass('notice notice-error').text('<?php echo esc_js( __( 'Error scanning sitemap', 'multichat-gpt' ) ); ?>');
-						},
-						complete: function() {
-							$btn.prop('disabled', false);
-						}
+						});
 					});
-				});
 
-				// Clear cache button
-				$('#multichat-clear-btn').on('click', function(e) {
-					e.preventDefault();
-					
-					if (!confirm('<?php echo esc_js( __( 'Are you sure you want to clear the knowledge base? This will revert to default responses.', 'multichat-gpt' ) ); ?>')) {
-						return;
-					}
+					// Scan individual language
+					$('.multichat-scan-lang-btn').on('click', function(e) {
+						e.preventDefault();
+						var $btn = $(this);
+						var language = $btn.data('language');
+						var $status = $('#multichat-status');
+						$btn.prop('disabled', true);
+						$status.show().text('⏳ Scanning...');
 
-					var $btn = $(this);
-					var $status = $('#multichat-clear-status');
-
-					$btn.prop('disabled', true);
-					$status.show().text('<?php echo esc_js( __( 'Clearing...', 'multichat-gpt' ) ); ?>');
-
-					$.ajax({
-						url: ajaxurl,
-						method: 'POST',
-						data: {
-							action: 'multichat_clear_cache',
-							nonce: '<?php echo wp_create_nonce( 'multichat_clear_nonce' ); ?>'
-						},
-						success: function(response) {
-							if (response.success) {
-								$status.addClass('notice notice-success').text('✓ ' + response.data.message);
-								setTimeout(function() {
-									location.reload();
-								}, 2000);
-							} else {
-								$status.addClass('notice notice-error').text('Error: ' + response.data);
+						$.ajax({
+							url: ajaxurl,
+							method: 'POST',
+							data: {
+								action: 'multichat_scan_language',
+								nonce: '<?php echo wp_create_nonce( 'multichat_scan_language_nonce' ); ?>',
+								language: language
+							},
+							success: function(response) {
+								if (response.success) {
+									$status.html('<div style="background: #c8e6c9; padding: 10px; border-radius: 3px;"><strong>✓ ' + response.data.message + '</strong></div>');
+									setTimeout(function() { location.reload(); }, 2000);
+								} else {
+									$status.html('<div style="background: #ffcdd2; padding: 10px; border-radius: 3px;"><strong>✗ Error: ' + response.data + '</strong></div>');
+								}
+							},
+							complete: function() {
+								$btn.prop('disabled', false);
 							}
-						},
-						error: function() {
-							$status.addClass('notice notice-error').text('<?php echo esc_js( __( 'Error clearing cache', 'multichat-gpt' ) ); ?>');
-						},
-						complete: function() {
-							$btn.prop('disabled', false);
-						}
+						});
 					});
-				});
+
+					// Clear all caches
+					$('#multichat-clear-all-btn').on('click', function(e) {
+						e.preventDefault();
+						if (!confirm('<?php echo esc_js( __( 'Clear all language caches? This cannot be undone.', 'multichat-gpt' ) ); ?>')) {
+							return;
+						}
+						var $btn = $(this);
+						var $status = $('#multichat-status');
+						$btn.prop('disabled', true);
+						$status.show().text('⏳ Clearing...');
+
+						$.ajax({
+							url: ajaxurl,
+							method: 'POST',
+							data: {
+								action: 'multichat_clear_cache',
+								nonce: '<?php echo wp_create_nonce( 'multichat_clear_nonce' ); ?>'
+							},
+							success: function(response) {
+								if (response.success) {
+									$status.html('<div style="background: #c8e6c9; padding: 10px; border-radius: 3px;"><strong>✓ ' + response.data.message + '</strong></div>');
+									setTimeout(function() { location.reload(); }, 2000);
+								} else {
+									$status.html('<div style="background: #ffcdd2; padding: 10px; border-radius: 3px;"><strong>✗ Error: ' + response.data + '</strong></div>');
+								}
+							},
+							complete: function() {
+								$btn.prop('disabled', false);
+							}
+						});
+					});
+
+					// Clear individual language cache
+					$('.multichat-clear-lang-btn').on('click', function(e) {
+						e.preventDefault();
+						if (!confirm('<?php echo esc_js( __( 'Clear cache for this language?', 'multichat-gpt' ) ); ?>')) {
+							return;
+						}
+						var $btn = $(this);
+						var language = $btn.data('language');
+						var $status = $('#multichat-status');
+						$btn.prop('disabled', true);
+						$status.show().text('⏳ Clearing...');
+
+						$.ajax({
+							url: ajaxurl,
+							method: 'POST',
+							data: {
+								action: 'multichat_clear_language_cache',
+								nonce: '<?php echo wp_create_nonce( 'multichat_clear_language_nonce' ); ?>',
+								language: language
+							},
+							success: function(response) {
+								if (response.success) {
+									$status.html('<div style="background: #c8e6c9; padding: 10px; border-radius: 3px;"><strong>✓ ' + response.data.message + '</strong></div>');
+									setTimeout(function() { location.reload(); }, 2000);
+								} else {
+									$status.html('<div style="background: #ffcdd2; padding: 10px; border-radius: 3px;"><strong>✗ Error: ' + response.data + '</strong></div>');
+								}
+							},
+							complete: function() {
+								$btn.prop('disabled', false);
+							}
+						});
+					});
+				<?php else : ?>
+					// Single language - Scan
+					$('#multichat-scan-btn').on('click', function() {
+						var $btn = $(this);
+						var $status = $('#multichat-scan-status');
+						$btn.prop('disabled', true);
+						$status.show().text('⏳ Scanning...');
+
+						$.ajax({
+							url: ajaxurl,
+							method: 'POST',
+							data: {
+								action: 'multichat_scan_sitemap',
+								nonce: '<?php echo wp_create_nonce( 'multichat_scan_nonce' ); ?>',
+								sitemap_url: '<?php echo esc_js( $sitemap_url ); ?>'
+							},
+							success: function(response) {
+								if (response.success) {
+									$status.addClass('notice notice-success').html('✓ ' + response.data.message + '<br>Knowledge base is permanent until next manual scan.');
+									setTimeout(function() { location.reload(); }, 2000);
+								} else {
+									$status.addClass('notice notice-error').text('✗ Error: ' + response.data);
+								}
+							},
+							error: function() {
+								$status.addClass('notice notice-error').text('✗ Error scanning sitemap');
+							},
+							complete: function() {
+								$btn.prop('disabled', false);
+							}
+						});
+					});
+
+					// Single language - Clear
+					$('#multichat-clear-btn').on('click', function() {
+						if (!confirm('<?php echo esc_js( __( 'Clear knowledge base? This cannot be undone.', 'multichat-gpt' ) ); ?>')) {
+							return;
+						}
+						var $btn = $(this);
+						var $status = $('#multichat-clear-status');
+						$btn.prop('disabled', true);
+						$status.show().text('⏳ Clearing...');
+
+						$.ajax({
+							url: ajaxurl,
+							method: 'POST',
+							data: {
+								action: 'multichat_clear_cache',
+								nonce: '<?php echo wp_create_nonce( 'multichat_clear_nonce' ); ?>'
+							},
+							success: function(response) {
+								if (response.success) {
+									$status.addClass('notice notice-success').text('✓ ' + response.data.message);
+									setTimeout(function() { location.reload(); }, 2000);
+								} else {
+									$status.addClass('notice notice-error').text('✗ Error: ' + response.data);
+								}
+							},
+							error: function() {
+								$status.addClass('notice notice-error').text('✗ Error clearing cache');
+							},
+							complete: function() {
+								$btn.prop('disabled', false);
+							}
+						});
+					});
+				<?php endif; ?>
 			});
 		</script>
 		<?php

@@ -2,6 +2,7 @@
 /**
  * Knowledge Base Builder Class
  * Converts crawled content into KB chunks
+ * Updated for WPML multi-language support
  *
  * @package MultiChatGPT
  */
@@ -14,17 +15,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MultiChat_KB_Builder {
 
 	const KB_CACHE_KEY = 'multichat_gpt_knowledge_base';
-	const KB_META_KEY = '_multichat_gpt_kb_timestamp'; // Store timestamp as option
+	const KB_META_KEY = '_multichat_gpt_kb_timestamp';
 
 	/**
-	 * Build knowledge base from URLs
+	 * Build knowledge base from URLs for a specific language
 	 *
-	 * @param array $urls List of page URLs to crawl
+	 * @param array  $urls List of page URLs to crawl
+	 * @param string $language_code Language code (for WPML)
 	 * @return array Knowledge base chunks
 	 */
-	public static function build_kb_from_urls( $urls ) {
-		// Clear old cache first
-		self::clear_cache();
+	public static function build_kb_from_urls( $urls, $language_code = 'en' ) {
+		// Clear old cache for this language first
+		self::clear_cache( $language_code );
 
 		$kb_chunks = [];
 
@@ -45,9 +47,10 @@ class MultiChat_KB_Builder {
 
 				// Create KB chunk
 				$chunk = [
-					'url'     => $url,
-					'title'   => $title,
-					'content' => $content,
+					'url'      => $url,
+					'title'    => $title,
+					'content'  => $content,
+					'language' => $language_code,
 				];
 
 				$kb_chunks[] = $chunk;
@@ -57,9 +60,9 @@ class MultiChat_KB_Builder {
 			}
 		}
 
-		// Store the KB permanently (no expiration)
+		// Store the KB for this language
 		if ( ! empty( $kb_chunks ) ) {
-			self::cache_knowledge_base( $kb_chunks );
+			self::cache_knowledge_base( $kb_chunks, $language_code );
 		}
 
 		return $kb_chunks;
@@ -88,68 +91,104 @@ class MultiChat_KB_Builder {
 	}
 
 	/**
-	 * Cache knowledge base permanently (no expiration)
-	 * Uses option instead of transient to avoid auto-expiration
+	 * Cache knowledge base for a language
 	 *
-	 * @param array $kb Knowledge base chunks
+	 * @param array  $kb Knowledge base chunks
+	 * @param string $language_code Language code
 	 * @return bool
 	 */
-	public static function cache_knowledge_base( $kb ) {
-		// Store KB as option (permanent until manually cleared)
-		$result = update_option( self::KB_CACHE_KEY, $kb );
-		
-		// Store timestamp of when it was cached
+	public static function cache_knowledge_base( $kb, $language_code = 'en' ) {
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
+
+		// Use WPML-aware caching if available
+		if ( MultiChat_WPML_Scanner::is_wpml_active() ) {
+			return MultiChat_WPML_Scanner::cache_language_kb( $language_code, $kb );
+		}
+
+		// Fallback to single-language caching
+		update_option( self::KB_CACHE_KEY, $kb );
 		update_option( self::KB_META_KEY, current_time( 'mysql' ) );
-		
-		return $result;
+
+		return true;
 	}
 
 	/**
-	 * Get cached knowledge base (never expires)
+	 * Get cached knowledge base
 	 *
+	 * @param string $language_code Language code
 	 * @return array|false
 	 */
-	public static function get_cached_knowledge_base() {
+	public static function get_cached_knowledge_base( $language_code = 'en' ) {
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
+
+		// Try WPML-aware retrieval first
+		if ( MultiChat_WPML_Scanner::is_wpml_active() ) {
+			$kb = MultiChat_WPML_Scanner::get_language_kb( $language_code );
+			if ( $kb ) {
+				return $kb;
+			}
+		}
+
+		// Fallback to single-language cache
 		return get_option( self::KB_CACHE_KEY, false );
 	}
 
 	/**
-	 * Check if KB is cached
+	 * Check if KB is cached for a language
 	 *
+	 * @param string $language_code Language code
 	 * @return bool
 	 */
-	public static function is_kb_cached() {
-		return get_option( self::KB_CACHE_KEY, false ) !== false;
+	public static function is_kb_cached( $language_code = 'en' ) {
+		return self::get_cached_knowledge_base( $language_code ) !== false;
 	}
 
 	/**
-	 * Clear cached knowledge base
+	 * Clear cached knowledge base for a language
 	 *
+	 * @param string $language_code Language code
 	 * @return bool
 	 */
-	public static function clear_cache() {
+	public static function clear_cache( $language_code = 'en' ) {
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
+
+		if ( MultiChat_WPML_Scanner::is_wpml_active() ) {
+			return MultiChat_WPML_Scanner::clear_language_cache( $language_code );
+		}
+
+		// Fallback
 		delete_option( self::KB_CACHE_KEY );
 		delete_option( self::KB_META_KEY );
+
 		return true;
 	}
 
 	/**
 	 * Get KB cache timestamp
 	 *
+	 * @param string $language_code Language code
 	 * @return string|false Timestamp when KB was last cached
 	 */
-	public static function get_cache_timestamp() {
+	public static function get_cache_timestamp( $language_code = 'en' ) {
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-wpml-scanner.php';
+
+		if ( MultiChat_WPML_Scanner::is_wpml_active() ) {
+			$timestamp_key = MultiChat_WPML_Scanner::get_language_timestamp_key( $language_code );
+			return get_option( $timestamp_key, false );
+		}
+
 		return get_option( self::KB_META_KEY, false );
 	}
 
 	/**
-	 * Get KB stats
+	 * Get KB stats for single language
 	 *
+	 * @param string $language_code Language code
 	 * @return array
 	 */
-	public static function get_kb_stats() {
-		$kb = self::get_cached_knowledge_base();
-		
+	public static function get_kb_stats( $language_code = 'en' ) {
+		$kb = self::get_cached_knowledge_base( $language_code );
+
 		if ( ! $kb ) {
 			return [
 				'pages_indexed' => 0,
@@ -159,8 +198,8 @@ class MultiChat_KB_Builder {
 			];
 		}
 
-		$timestamp = self::get_cache_timestamp();
-		
+		$timestamp = self::get_cache_timestamp( $language_code );
+
 		return [
 			'pages_indexed' => count( $kb ),
 			'cache_status'  => 'Active',
