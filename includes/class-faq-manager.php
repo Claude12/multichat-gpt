@@ -54,6 +54,22 @@ class MultiChat_FAQ_Manager {
 				'hierarchical' => true,
 			]
 		);
+
+		// Register with WPML if available
+		self::register_wpml_support();
+	}
+
+	/**
+	 * Register post type with WPML for translation
+	 */
+	private static function register_wpml_support() {
+		// Check if WPML is active
+		if ( ! function_exists( 'wpml_get_language_information' ) ) {
+			return;
+		}
+
+		// Tell WPML to translate this post type
+		do_action( 'wpml_register_custom_post_type_translatable', self::POST_TYPE );
 	}
 
 	/**
@@ -71,9 +87,9 @@ class MultiChat_FAQ_Manager {
 			'order'          => 'ASC',
 		];
 
-		// If WPML is active, filter by language
+		// Filter by language if WPML is active
 		if ( function_exists( 'wpml_get_language_information' ) ) {
-			$args['suppress_filters'] = false;
+			$args['language'] = $language_code;
 		}
 
 		$query = new WP_Query( $args );
@@ -82,20 +98,9 @@ class MultiChat_FAQ_Manager {
 		if ( $query->have_posts() ) {
 			while ( $query->have_posts() ) {
 				$query->the_post();
-				$post_id = get_the_ID();
-
-				// Get WPML language if available
-				$post_language = get_post_meta( $post_id, '_wpml_language_code', true );
-
-				// Only include FAQs for this language
-				if ( function_exists( 'wpml_get_language_information' ) ) {
-					if ( $post_language && $post_language !== $language_code ) {
-						continue;
-					}
-				}
 
 				$faqs[] = [
-					'id'      => $post_id,
+					'id'      => get_the_ID(),
 					'title'   => get_the_title(),
 					'content' => wp_strip_all_tags( get_the_content() ),
 					'url'     => get_permalink(),
@@ -164,9 +169,15 @@ class MultiChat_FAQ_Manager {
 			return $post_id;
 		}
 
-		// Store language code for WPML filtering
+		// Set language for WPML if available
 		if ( function_exists( 'wpml_get_language_information' ) ) {
-			update_post_meta( $post_id, '_wpml_language_code', $language_code );
+			do_action( 'wpml_set_element_language_details', 
+				[
+					'element_id'    => $post_id,
+					'element_type'  => self::POST_TYPE,
+					'language_code' => $language_code,
+				]
+			);
 		}
 
 		return $post_id;
@@ -195,6 +206,10 @@ class MultiChat_FAQ_Manager {
 			'post_status'    => 'publish',
 			'fields'         => 'ids',
 		];
+
+		if ( $language_code && function_exists( 'wpml_get_language_information' ) ) {
+			$args['language'] = $language_code;
+		}
 
 		$query = new WP_Query( $args );
 
