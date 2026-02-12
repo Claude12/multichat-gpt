@@ -287,6 +287,53 @@
 	cursor: not-allowed;
 }
 
+.multichat-send-btn.multichat-loading {
+	position: relative;
+}
+
+.multichat-send-btn.multichat-loading::after {
+	content: '';
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 12px;
+	height: 12px;
+	border: 2px solid white;
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: translateY(-50%) rotate(360deg);
+	}
+}
+
+/* Typing Indicator */
+.multichat-typing .multichat-message-content {
+	display: flex;
+	align-items: center;
+	padding: 10px 14px;
+}
+
+.multichat-typing-dots {
+	display: inline-block;
+	font-size: 20px;
+	line-height: 1;
+	animation: typing 1.4s infinite;
+}
+
+@keyframes typing {
+	0%, 60%, 100% {
+		opacity: 0.3;
+	}
+	30% {
+		opacity: 1;
+	}
+}
+
 /* Responsive Design */
 @media (max-width: 480px) {
 	.multichat-chat-window {

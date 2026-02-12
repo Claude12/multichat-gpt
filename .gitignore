@@ -1,0 +1,39 @@
+# WordPress
+.htaccess
+wp-config.php
+wp-content/uploads/
+wp-content/blogs.dir/
+wp-content/upgrade/
+wp-content/backup-db/
+wp-content/advanced-cache.php
+wp-content/wp-cache-config.php
+
+# Plugin-specific
+*.log
+.DS_Store
+Thumbs.db
+
+# Development
+node_modules/
+vendor/
+*.sql
+*.tar.gz
+*.zip
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak

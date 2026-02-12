@@ -1,7 +1,7 @@
 /**
  * MultiChat GPT Frontend Widget
- * Handles the floating chat interface
- * FIXED: Removed nonce requirement for proper REST API communication
+ * Handles the floating chat interface with optimizations
+ * Features: Event delegation, debouncing, lazy loading
  */
 
 (function () {
@@ -11,7 +11,8 @@
 	const config = {
 		restUrl: multiChatGPT?.restUrl || '/wp-json/multichat/v1/ask',
 		language: multiChatGPT?.language || 'en',
-		position: localStorage.getItem('multichat_position') || 'bottom-right',
+		position: multiChatGPT?.position || localStorage.getItem('multichat_position') || 'bottom-right',
+		debounceDelay: 300, // ms
 	};
 
 	// Chat state
@@ -20,6 +21,51 @@
 		messages: [],
 		isLoading: false,
 	};
+
+	// DOM references cache
+	const domCache = {};
+
+	/**
+	 * Debounce utility function
+	 *
+	 * @param {Function} func Function to debounce
+	 * @param {number} wait Wait time in milliseconds
+	 * @return {Function} Debounced function
+	 */
+	function debounce(func, wait) {
+		let timeout;
+		return function executedFunction(...args) {
+			const later = () => {
+				clearTimeout(timeout);
+				func(...args);
+			};
+			clearTimeout(timeout);
+			timeout = setTimeout(later, wait);
+		};
+	}
+
+	/**
+	 * Initialize the widget
+	 */
+	function init() {
+		createWidgetHTML();
+		cacheDOM();
+		attachEventListeners();
+		loadChatHistory();
+	}
+
+	/**
+	 * Cache DOM references
+	 */
+	function cacheDOM() {
+		domCache.container = document.getElementById('multichat-gpt-widget');
+		domCache.chatWindow = document.getElementById('multichat-chat-window');
+		domCache.toggleBtn = document.getElementById('multichat-toggle-btn');
+		domCache.closeBtn = document.getElementById('multichat-close-btn');
+		domCache.sendBtn = document.getElementById('multichat-send-btn');
+		domCache.input = document.getElementById('multichat-input');
+		domCache.messages = document.getElementById('multichat-messages');
+	}
 
 	/**
 	 * Initialize the widget
@@ -76,31 +122,83 @@
 	}
 
 	/**
-	 * Attach event listeners
+	 * Attach event listeners with event delegation
 	 */
 	function attachEventListeners() {
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
-		const closeBtn = document.getElementById('multichat-close-btn');
-		const sendBtn = document.getElementById('multichat-send-btn');
-		const input = document.getElementById('multichat-input');
+		// Use event delegation on container
+		if (domCache.container) {
+			domCache.container.addEventListener('click', handleContainerClick);
+		}
 
-		toggleBtn?.addEventListener('click', toggleChat);
-		closeBtn?.addEventListener('click', closeChat);
-		sendBtn?.addEventListener('click', sendMessage);
+		// Keyboard event with debouncing
+		if (domCache.input) {
+			domCache.input.addEventListener('keypress', handleKeyPress);
+			
+			// Enable input after widget loads
+			setTimeout(() => {
+				domCache.input.disabled = false;
+				if (domCache.sendBtn) {
+					domCache.sendBtn.disabled = false;
+				}
+			}, 500);
+		}
 
-		input?.addEventListener('keypress', (e) => {
-			if (e.key === 'Enter' && !e.shiftKey && !chatState.isLoading) {
-				sendMessage();
-			}
-		});
+		// Handle window resize with debouncing
+		window.addEventListener('resize', debounce(handleResize, config.debounceDelay));
+	}
 
-		// Enable input after widget loads
-		setTimeout(() => {
-			if (input) {
-				input.disabled = false;
-				sendBtn.disabled = false;
-			}
-		}, 500);
+	/**
+	 * Handle container click events (event delegation)
+	 *
+	 * @param {Event} e Click event
+	 */
+	function handleContainerClick(e) {
+		const target = e.target;
+
+		// Toggle button clicked
+		if (target.closest('#multichat-toggle-btn')) {
+			e.preventDefault();
+			toggleChat();
+			return;
+		}
+
+		// Close button clicked
+		if (target.closest('#multichat-close-btn')) {
+			e.preventDefault();
+			closeChat();
+			return;
+		}
+
+		// Send button clicked
+		if (target.closest('#multichat-send-btn')) {
+			e.preventDefault();
+			sendMessage();
+			return;
+		}
+	}
+
+	/**
+	 * Handle key press events
+	 *
+	 * @param {Event} e Keyboard event
+	 */
+	function handleKeyPress(e) {
+		if (e.key === 'Enter' && !e.shiftKey && !chatState.isLoading) {
+			e.preventDefault();
+			sendMessage();
+		}
+	}
+
+	/**
+	 * Handle window resize (debounced)
+	 */
+	function handleResize() {
+		// Adjust chat window height if needed
+		if (chatState.isOpen && domCache.chatWindow) {
+			const viewportHeight = window.innerHeight;
+			const maxHeight = Math.min(500, viewportHeight * 0.8);
+			domCache.chatWindow.style.maxHeight = maxHeight + 'px';
+		}
 	}
 
 	/**
@@ -118,42 +216,37 @@
 	 * Open chat window
 	 */
 	function openChat() {
-		const chatWindow = document.getElementById('multichat-chat-window');
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
+		if (!domCache.chatWindow || !domCache.toggleBtn) return;
 
-		if (chatWindow) {
-			chatWindow.classList.add('multichat-open');
-			toggleBtn?.classList.add('multichat-hidden');
-			chatState.isOpen = true;
+		domCache.chatWindow.classList.add('multichat-open');
+		domCache.toggleBtn.classList.add('multichat-hidden');
+		chatState.isOpen = true;
 
-			// Focus input
-			setTimeout(() => {
-				document.getElementById('multichat-input')?.focus();
-			}, 200);
-		}
+		// Focus input
+		setTimeout(() => {
+			domCache.input?.focus();
+		}, 200);
+
+		// Trigger resize handler
+		handleResize();
 	}
 
 	/**
 	 * Close chat window
 	 */
 	function closeChat() {
-		const chatWindow = document.getElementById('multichat-chat-window');
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
+		if (!domCache.chatWindow || !domCache.toggleBtn) return;
 
-		if (chatWindow) {
-			chatWindow.classList.remove('multichat-open');
-			toggleBtn?.classList.remove('multichat-hidden');
-			chatState.isOpen = false;
-		}
+		domCache.chatWindow.classList.remove('multichat-open');
+		domCache.toggleBtn.classList.remove('multichat-hidden');
+		chatState.isOpen = false;
 	}
 
 	/**
 	 * Send message to backend
-	 * FIXED: Removed nonce requirement, using simple fetch POST
 	 */
 	async function sendMessage() {
-		const input = document.getElementById('multichat-input');
-		const message = input?.value?.trim();
+		const message = domCache.input?.value?.trim();
 
 		if (!message || chatState.isLoading) {
 			return;
@@ -161,11 +254,14 @@
 
 		// Add user message to UI
 		addMessageToUI(message, 'user');
-		input.value = '';
+		domCache.input.value = '';
 
 		// Set loading state
 		chatState.isLoading = true;
 		updateInputState();
+
+		// Show typing indicator
+		const typingIndicator = addTypingIndicator();
 
 		try {
 			const response = await fetch(config.restUrl, {
@@ -178,6 +274,11 @@
 					language: config.language,
 				}),
 			});
+
+			// Remove typing indicator
+			if (typingIndicator) {
+				typingIndicator.remove();
+			}
 
 			const data = await response.json();
 
@@ -192,6 +293,12 @@
 			}
 		} catch (error) {
 			console.error('Chat error:', error);
+			
+			// Remove typing indicator
+			if (typingIndicator) {
+				typingIndicator.remove();
+			}
+			
 			addMessageToUI(getTranslation('errorMessage'), 'error');
 		} finally {
 			chatState.isLoading = false;
@@ -200,12 +307,35 @@
 	}
 
 	/**
-	 * Add message to chat UI
+	 * Add typing indicator
+	 *
+	 * @return {HTMLElement|null} Typing indicator element
+	 */
+	function addTypingIndicator() {
+		if (!domCache.messages) return null;
+
+		const indicator = document.createElement('div');
+		indicator.className = 'multichat-message multichat-assistant multichat-typing';
+		indicator.innerHTML = '<div class="multichat-message-content"><span class="multichat-typing-dots">...</span></div>';
+		
+		domCache.messages.appendChild(indicator);
+		domCache.messages.scrollTop = domCache.messages.scrollHeight;
+		
+		return indicator;
+	}
+
+	/**
+	 * Add message to chat UI (optimized DOM operations)
+	 *
+	 * @param {string} message Message text
+	 * @param {string} sender Sender type (user, assistant, error, info)
 	 */
 	function addMessageToUI(message, sender = 'user') {
-		const messagesContainer = document.getElementById('multichat-messages');
-		if (!messagesContainer) return;
+		if (!domCache.messages) return;
 
+		// Create document fragment for better performance
+		const fragment = document.createDocumentFragment();
+		
 		const messageEl = document.createElement('div');
 		messageEl.className = `multichat-message multichat-${sender}`;
 
@@ -214,10 +344,15 @@
 		messageContent.textContent = message;
 
 		messageEl.appendChild(messageContent);
-		messagesContainer.appendChild(messageEl);
+		fragment.appendChild(messageEl);
+		
+		// Single DOM append
+		domCache.messages.appendChild(fragment);
 
-		// Auto-scroll to bottom
-		messagesContainer.scrollTop = messagesContainer.scrollHeight;
+		// Auto-scroll to bottom with smooth behavior
+		requestAnimationFrame(() => {
+			domCache.messages.scrollTop = domCache.messages.scrollHeight;
+		});
 
 		// Store in chat state
 		chatState.messages.push({
@@ -231,18 +366,17 @@
 	 * Update input state based on loading
 	 */
 	function updateInputState() {
-		const input = document.getElementById('multichat-input');
-		const sendBtn = document.getElementById('multichat-send-btn');
+		if (!domCache.input || !domCache.sendBtn) return;
 
-		if (input && sendBtn) {
-			input.disabled = chatState.isLoading;
-			sendBtn.disabled = chatState.isLoading;
+		domCache.input.disabled = chatState.isLoading;
+		domCache.sendBtn.disabled = chatState.isLoading;
 
-			if (chatState.isLoading) {
-				sendBtn.textContent = getTranslation('loadingButton');
-			} else {
-				sendBtn.textContent = getTranslation('sendButton');
-			}
+		if (chatState.isLoading) {
+			domCache.sendBtn.textContent = getTranslation('loadingButton');
+			domCache.sendBtn.classList.add('multichat-loading');
+		} else {
+			domCache.sendBtn.textContent = getTranslation('sendButton');
+			domCache.sendBtn.classList.remove('multichat-loading');
 		}
 	}
 
@@ -280,13 +414,16 @@
 				localStorage.getItem('multichat_history') || '[]'
 			);
 
-			if (history.length > 0) {
+			if (history.length > 0 && domCache.messages) {
 				const welcomeMsg = document.createElement('div');
 				welcomeMsg.className = 'multichat-message multichat-info';
-				welcomeMsg.textContent = getTranslation('previousChats');
-
-				const messagesContainer = document.getElementById('multichat-messages');
-				messagesContainer?.appendChild(welcomeMsg);
+				
+				const welcomeContent = document.createElement('div');
+				welcomeContent.className = 'multichat-message-content';
+				welcomeContent.textContent = getTranslation('previousChats');
+				
+				welcomeMsg.appendChild(welcomeContent);
+				domCache.messages.appendChild(welcomeMsg);
 			}
 		} catch (error) {
 			console.error('Failed to load chat history:', error);
