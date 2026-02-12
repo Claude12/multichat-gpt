@@ -43,7 +43,7 @@
 					sitemap_url: sitemapUrl,
 					force_refresh: true,
 				},
-				timeout: 120000, // 2 minutes timeout
+				timeout: multiChatKB.ajaxTimeout || 120000, // Default 2 minutes if not set
 			})
 				.done(function (response) {
 					if (response.success) {

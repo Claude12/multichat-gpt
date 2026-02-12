@@ -25,6 +25,13 @@ class MultiChat_Content_Crawler {
 	private $timeout = 5;
 
 	/**
+	 * Maximum number of URLs to crawl in batch
+	 *
+	 * @var int
+	 */
+	private $max_crawl_limit = 50;
+
+	/**
 	 * Crawl a URL and extract its content
 	 *
 	 * @param string $url URL to crawl
@@ -100,14 +107,36 @@ class MultiChat_Content_Crawler {
 		// Remove aside elements (sidebars)
 		$html = preg_replace( '/<aside\b[^>]*>(.*?)<\/aside>/is', '', $html );
 
-		// Try to extract main content
-		if ( preg_match( '/<main\b[^>]*>(.*?)<\/main>/is', $html, $matches ) ) {
-			$html = $matches[1];
-		} elseif ( preg_match( '/<article\b[^>]*>(.*?)<\/article>/is', $html, $matches ) ) {
-			$html = $matches[1];
-		} elseif ( preg_match( '/<div\b[^>]*class=["\'][^"\']*(?:content|entry|post)[^"\']*["\'][^>]*>(.*?)<\/div>/is', $html, $matches ) ) {
-			$html = $matches[1];
+		// Try to extract main content using DOMDocument for better parsing
+		libxml_use_internal_errors( true );
+		$dom = new DOMDocument();
+		$dom->loadHTML( mb_convert_encoding( $html, 'HTML-ENTITIES', 'UTF-8' ), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
+		libxml_clear_errors();
+
+		// Try to find main content area
+		$main_content = null;
+		$xpath        = new DOMXPath( $dom );
+
+		// Try main tag first
+		$nodes = $xpath->query( '//main' );
+		if ( $nodes->length > 0 ) {
+			$main_content = $dom->saveHTML( $nodes->item( 0 ) );
+		} else {
+			// Try article tag
+			$nodes = $xpath->query( '//article' );
+			if ( $nodes->length > 0 ) {
+				$main_content = $dom->saveHTML( $nodes->item( 0 ) );
+			} else {
+				// Try divs with content/entry/post classes
+				$nodes = $xpath->query( "//div[contains(@class, 'content') or contains(@class, 'entry') or contains(@class, 'post')]" );
+				if ( $nodes->length > 0 ) {
+					$main_content = $dom->saveHTML( $nodes->item( 0 ) );
+				}
+			}
 		}
+
+		// Use main content if found, otherwise use cleaned HTML
+		$html = $main_content ? $main_content : $html;
 
 		// Strip remaining HTML tags
 		$text = wp_strip_all_tags( $html, true );
@@ -145,10 +174,14 @@ class MultiChat_Content_Crawler {
 	 * Crawl multiple URLs
 	 *
 	 * @param array $urls Array of URL data
-	 * @param int   $max_urls Maximum number of URLs to crawl (default: 50)
+	 * @param int   $max_urls Maximum number of URLs to crawl (default: uses class property)
 	 * @return array Array of crawl results
 	 */
-	public function crawl_multiple( $urls, $max_urls = 50 ) {
+	public function crawl_multiple( $urls, $max_urls = null ) {
+		if ( null === $max_urls ) {
+			$max_urls = $this->max_crawl_limit;
+		}
+
 		$results = [
 			'success' => [],
 			'failed'  => [],
@@ -189,5 +222,14 @@ class MultiChat_Content_Crawler {
 	 */
 	public function set_timeout( $timeout ) {
 		$this->timeout = max( 1, min( 30, (int) $timeout ) );
+	}
+
+	/**
+	 * Set maximum crawl limit
+	 *
+	 * @param int $limit Maximum number of URLs to crawl
+	 */
+	public function set_max_crawl_limit( $limit ) {
+		$this->max_crawl_limit = max( 1, min( 200, (int) $limit ) );
 	}
 }

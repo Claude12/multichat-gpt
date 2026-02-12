@@ -168,30 +168,22 @@ class MultiChat_Sitemap_Scanner {
 		$url = untrailingslashit( $url );
 
 		// Common patterns for different post types
-		$patterns = [
-			'page'     => [ '/(?!blog|news|post|article)/' ], // Pages typically don't have these keywords
-			'post'     => [ '/blog/', '/news/', '/post/', '/article/' ],
-			'product'  => [ '/product/', '/shop/', '/store/' ],
-			'category' => [ '/category/' ],
-			'tag'      => [ '/tag/' ],
-		];
-
-		// Check URL patterns
-		foreach ( $patterns as $type => $type_patterns ) {
-			foreach ( $type_patterns as $pattern ) {
-				if ( preg_match( $pattern, $url ) ) {
-					return $type;
-				}
-			}
+		// Check for specific post types first
+		if ( preg_match( '#/(blog|news|post|article)/#i', $url ) ) {
+			return 'post';
+		}
+		if ( preg_match( '#/(product|shop|store)/#i', $url ) ) {
+			return 'product';
+		}
+		if ( preg_match( '#/category/#i', $url ) ) {
+			return 'category';
+		}
+		if ( preg_match( '#/tag/#i', $url ) ) {
+			return 'tag';
 		}
 
-		// Default to page for root-level URLs
-		$path = wp_parse_url( $url, PHP_URL_PATH );
-		if ( ! empty( $path ) && substr_count( $path, '/' ) <= 2 ) {
-			return 'page';
-		}
-
-		return 'unknown';
+		// Default to page for URLs without specific post type indicators
+		return 'page';
 	}
 
 	/**

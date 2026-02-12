@@ -532,8 +532,9 @@ class MultiChat_GPT {
 			'multichat-gpt-admin-kb',
 			'multiChatKB',
 			[
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'multichat_kb_nonce' ),
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'nonce'       => wp_create_nonce( 'multichat_kb_nonce' ),
+				'ajaxTimeout' => 120000, // 2 minutes in milliseconds
 			]
 		);
 	}
@@ -844,7 +845,7 @@ class MultiChat_GPT {
 		$urls = $this->sitemap_scanner->get_unique_urls( $urls );
 
 		// Crawl URLs (limit to 50)
-		$crawl_results = $this->content_crawler->crawl_multiple( $urls, 50 );
+		$crawl_results = $this->content_crawler->crawl_multiple( $urls );
 
 		// Build knowledge base
 		$kb_data = $this->kb_builder->build( $crawl_results['success'] );
@@ -899,7 +900,7 @@ class MultiChat_GPT {
 		$urls = $this->sitemap_scanner->get_unique_urls( $urls );
 
 		// Crawl URLs (limit to 50)
-		$crawl_results = $this->content_crawler->crawl_multiple( $urls, 50 );
+		$crawl_results = $this->content_crawler->crawl_multiple( $urls );
 
 		// Build knowledge base
 		$kb_data = $this->kb_builder->build( $crawl_results['success'] );
