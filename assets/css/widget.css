@@ -1,5 +1,9 @@
 /**
  * MultiChat GPT Widget Styles
+ * Optimized for performance with hardware acceleration and reduced repaints
+ *
+ * @package MultiChatGPT
+ * @since 1.0.0
  */
 
 /* Widget Container */
@@ -21,6 +25,10 @@
 	font-size: 14px;
 	color: var(--text-color);
 	z-index: var(--z-index);
+	/* Performance: Use hardware acceleration */
+	will-change: transform;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 /* Position Classes */
@@ -47,10 +55,14 @@
 	align-items: center;
 	justify-content: center;
 	box-shadow: var(--shadow);
-	transition: all 0.3s ease;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	font-size: 24px;
 	padding: 0;
 	line-height: 1;
+	/* Performance: Hardware acceleration */
+	will-change: transform;
+	transform: translateZ(0);
+	backface-visibility: hidden;
 }
 
 .multichat-toggle-btn:hover {
@@ -80,9 +92,12 @@
 	flex-direction: column;
 	opacity: 0;
 	visibility: hidden;
-	transform: translateY(10px);
-	transition: all 0.3s ease;
+	transform: translateY(10px) translateZ(0);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	pointer-events: none;
+	/* Performance: Hardware acceleration */
+	will-change: transform, opacity;
+	backface-visibility: hidden;
 }
 
 #multichat-gpt-widget.bottom-left .multichat-chat-window {
@@ -140,10 +155,16 @@
 #multichat-messages {
 	flex: 1;
 	overflow-y: auto;
+	overflow-x: hidden;
 	padding: var(--spacing);
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+	/* Performance: Use containment for better rendering */
+	contain: layout style paint;
+	/* Enable smooth scrolling */
+	scroll-behavior: smooth;
+	-webkit-overflow-scrolling: touch;
 }
 
 #multichat-messages::-webkit-scrollbar {
@@ -166,17 +187,19 @@
 /* Message Styles */
 .multichat-message {
 	display: flex;
-	animation: slideIn 0.3s ease;
+	animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	/* Performance: Reduce repaints */
+	will-change: transform;
 }
 
 @keyframes slideIn {
 	from {
 		opacity: 0;
-		transform: translateY(10px);
+		transform: translateY(10px) translateZ(0);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0);
+		transform: translateY(0) translateZ(0);
 	}
 }
 
@@ -285,6 +308,33 @@
 .multichat-send-btn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+/* Loading state for send button */
+.multichat-send-btn.multichat-loading {
+	position: relative;
+	color: transparent;
+}
+
+.multichat-send-btn.multichat-loading::after {
+	content: '';
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	top: 50%;
+	left: 50%;
+	margin-left: -8px;
+	margin-top: -8px;
+	border: 2px solid #ffffff;
+	border-radius: 50%;
+	border-top-color: transparent;
+	animation: spinner 0.6s linear infinite;
+}
+
+@keyframes spinner {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* Responsive Design */
