@@ -322,8 +322,18 @@
 		const indicator = document.createElement('div');
 		indicator.id = 'multichat-typing-indicator';
 		indicator.className = 'multichat-message multichat-assistant';
-		indicator.innerHTML = '<div class="multichat-message-content multichat-typing"><span>•</span><span>•</span><span>•</span></div>';
-
+		
+		const content = document.createElement('div');
+		content.className = 'multichat-message-content multichat-typing';
+		
+		// Create typing dots
+		for (let i = 0; i < 3; i++) {
+			const dot = document.createElement('span');
+			dot.textContent = '•';
+			content.appendChild(dot);
+		}
+		
+		indicator.appendChild(content);
 		messagesContainer.appendChild(indicator);
 		scrollToBottom();
 	}

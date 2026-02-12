@@ -111,10 +111,18 @@ class MultiChat_GPT_REST_Endpoints {
 			);
 		}
 
-		if ( strlen( $value ) > 1000 ) {
+		/**
+		 * Filter the maximum message length
+		 *
+		 * @param int $max_length Maximum message length in characters.
+		 */
+		$max_length = apply_filters( 'multichat_gpt_max_message_length', 1000 );
+
+		if ( strlen( $value ) > $max_length ) {
 			return new WP_Error(
 				'message_too_long',
-				__( 'Message is too long. Maximum 1000 characters allowed.', 'multichat-gpt' ),
+				/* translators: %d: Maximum message length */
+				sprintf( __( 'Message is too long. Maximum %d characters allowed.', 'multichat-gpt' ), $max_length ),
 				array( 'status' => 400 )
 			);
 		}

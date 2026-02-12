@@ -92,7 +92,6 @@ class MultiChat_GPT_Widget_Manager {
 			array(
 				'restUrl'  => rest_url( 'multichat/v1/ask' ),
 				'language' => $current_language,
-				'nonce'    => wp_create_nonce( 'wp_rest' ),
 			)
 		);
 
