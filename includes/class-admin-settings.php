@@ -255,7 +255,7 @@ class MultiChat_GPT_Admin_Settings {
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Documentation', 'multichat-gpt' ); ?></th>
 					<td>
-						<a href="<?php echo esc_url( MULTICHAT_GPT_PLUGIN_DIR . 'INSTALLATION.md' ); ?>" target="_blank">
+						<a href="<?php echo esc_url( MULTICHAT_GPT_PLUGIN_URL . 'INSTALLATION.md' ); ?>" target="_blank">
 							<?php esc_html_e( 'View Installation Guide', 'multichat-gpt' ); ?>
 						</a>
 					</td>

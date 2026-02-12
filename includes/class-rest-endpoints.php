@@ -132,7 +132,7 @@ class MultiChat_GPT_REST_Endpoints {
 		if ( is_wp_error( $rate_limit_check ) ) {
 			MultiChat_GPT_Logger::warning(
 				'Rate limit exceeded',
-				array( 'ip' => self::get_client_ip() )
+				array( 'ip' => MultiChat_GPT_Utility::get_client_ip() )
 			);
 			return $rate_limit_check;
 		}
@@ -209,7 +209,7 @@ class MultiChat_GPT_REST_Endpoints {
 	 * @return bool|WP_Error True if within limit, WP_Error if exceeded.
 	 */
 	private static function check_rate_limit() {
-		$client_ip = self::get_client_ip();
+		$client_ip = MultiChat_GPT_Utility::get_client_ip();
 		$cache_key = 'multichat_rate_limit_' . md5( $client_ip );
 
 		$request_log = get_transient( $cache_key );
@@ -249,36 +249,5 @@ class MultiChat_GPT_REST_Endpoints {
 		set_transient( $cache_key, $request_log, self::RATE_LIMIT_WINDOW );
 
 		return true;
-	}
-
-	/**
-	 * Get client IP address
-	 *
-	 * @return string IP address.
-	 */
-	private static function get_client_ip(): string {
-		$ip_keys = array(
-			'HTTP_CLIENT_IP',
-			'HTTP_X_FORWARDED_FOR',
-			'HTTP_X_FORWARDED',
-			'HTTP_X_CLUSTER_CLIENT_IP',
-			'HTTP_FORWARDED_FOR',
-			'HTTP_FORWARDED',
-			'REMOTE_ADDR',
-		);
-
-		foreach ( $ip_keys as $key ) {
-			if ( array_key_exists( $key, $_SERVER ) === true ) {
-				foreach ( explode( ',', sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) ) ) as $ip ) {
-					$ip = trim( $ip );
-
-					if ( filter_var( $ip, FILTER_VALIDATE_IP ) !== false ) {
-						return $ip;
-					}
-				}
-			}
-		}
-
-		return '0.0.0.0';
 	}
 }

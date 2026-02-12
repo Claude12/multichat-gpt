@@ -23,10 +23,10 @@ class MultiChat_GPT_Logger {
 	/**
 	 * Log levels
 	 */
-	const LEVEL_ERROR   = 'error';
-	const LEVEL_WARNING = 'warning';
-	const LEVEL_INFO    = 'info';
-	const LEVEL_DEBUG   = 'debug';
+	private const LEVEL_ERROR   = 'error';
+	private const LEVEL_WARNING = 'warning';
+	private const LEVEL_INFO    = 'info';
+	private const LEVEL_DEBUG   = 'debug';
 
 	/**
 	 * Maximum number of log entries to store
@@ -104,7 +104,7 @@ class MultiChat_GPT_Logger {
 			'level'     => $level,
 			'message'   => $message,
 			'context'   => $context,
-			'ip'        => self::get_client_ip(),
+			'ip'        => MultiChat_GPT_Utility::get_client_ip(),
 		);
 
 		// Add to beginning of array
@@ -159,36 +159,5 @@ class MultiChat_GPT_Logger {
 	 */
 	public static function clear_logs(): bool {
 		return delete_option( self::LOG_OPTION );
-	}
-
-	/**
-	 * Get client IP address
-	 *
-	 * @return string IP address.
-	 */
-	private static function get_client_ip(): string {
-		$ip_keys = array(
-			'HTTP_CLIENT_IP',
-			'HTTP_X_FORWARDED_FOR',
-			'HTTP_X_FORWARDED',
-			'HTTP_X_CLUSTER_CLIENT_IP',
-			'HTTP_FORWARDED_FOR',
-			'HTTP_FORWARDED',
-			'REMOTE_ADDR',
-		);
-
-		foreach ( $ip_keys as $key ) {
-			if ( array_key_exists( $key, $_SERVER ) === true ) {
-				foreach ( explode( ',', sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) ) ) as $ip ) {
-					$ip = trim( $ip );
-
-					if ( filter_var( $ip, FILTER_VALIDATE_IP ) !== false ) {
-						return $ip;
-					}
-				}
-			}
-		}
-
-		return '0.0.0.0';
 	}
 }

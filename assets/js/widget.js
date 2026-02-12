@@ -266,7 +266,9 @@
 
 		// Auto-scroll to bottom with smooth behavior
 		requestAnimationFrame(() => {
-			elements.messages.scrollTop = elements.messages.scrollHeight;
+			if (elements.messages) {
+				elements.messages.scrollTop = elements.messages.scrollHeight;
+			}
 		});
 
 		// Store in chat state
