@@ -32,7 +32,7 @@ class MultiChat_FAQ_Manager {
 				],
 				'public'       => false,
 				'show_ui'      => true,
-				'show_in_menu' => 'options-general.php',
+				'show_in_menu' => false,
 				'supports'     => [ 'title', 'editor' ],
 				'has_archive'  => false,
 				'rewrite'      => false,

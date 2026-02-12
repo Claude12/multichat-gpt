@@ -4,7 +4,7 @@
  * Plugin URI: https://example.com/multichat-gpt
  * Description: ChatGPT-powered multilingual chat widget for WordPress Multisite + WPML
  * Version: 1.2.1
- * Author: Your Name
+ * Author: Claudius Sachinda
  * Author URI: https://example.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
