@@ -146,6 +146,8 @@ class MultiChat_Admin_Page {
 
 	/**
 	 * Render admin page (legacy method - kept for backwards compatibility)
+	 * 
+	 * @deprecated 1.2.2 Use render_settings(), render_faqs(), or render_about() instead
 	 */
 	public static function render() {
 		self::render_settings();
@@ -632,6 +634,11 @@ class MultiChat_Admin_Page {
 
 	/**
 	 * Render admin scripts (legacy method - kept for backwards compatibility)
+	 * 
+	 * @deprecated 1.2.2 Use render_settings_scripts() and render_faq_scripts() instead
+	 * @param bool   $is_wpml_active Whether WPML is active
+	 * @param string $sitemap_url    Sitemap URL
+	 * @param string $current_language Current language code
 	 */
 	private static function render_admin_scripts( $is_wpml_active, $sitemap_url, $current_language ) {
 		// Call the separated methods for better maintainability
