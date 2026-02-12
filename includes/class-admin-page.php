@@ -48,7 +48,7 @@ class MultiChat_Admin_Page {
 	}
 
 	/**
-	 * Render about page
+	 * Render about page with full feature list
 	 */
 	public static function render_about() {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -62,22 +62,258 @@ class MultiChat_Admin_Page {
 
 				<!-- Overview -->
 				<div style="background: #f0f7ff; padding: 25px; margin-bottom: 25px; border-left: 4px solid #0066cc; border-radius: 4px;">
-					<h2><?php esc_html_e( 'MultiChat GPT v1.2.1', 'multichat-gpt' ); ?></h2>
+					<h2 style="margin-top: 0;"><?php esc_html_e( 'MultiChat GPT v1.2.2', 'multichat-gpt' ); ?></h2>
 					<p style="font-size: 16px; line-height: 1.6;">
-						<?php esc_html_e( 'ChatGPT-powered multilingual chat widget for WordPress with WPML support. Automatically build a knowledge base from your website content and let AI answer customer questions.', 'multichat-gpt' ); ?>
+						<?php esc_html_e( 'ChatGPT-powered multilingual chat widget for WordPress with WPML support. Automatically build a knowledge base from your website content and let AI answer customer questions in any language.', 'multichat-gpt' ); ?>
 					</p>
 				</div>
 
-				<!-- Key Features -->
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- CORE FEATURES -->
+				<!-- ═══════════════════════════════════════════ -->
 				<div style="background: #fff; padding: 25px; margin-bottom: 25px; border: 1px solid #ddd; border-radius: 4px;">
-					<h3 style="margin-top: 0;">✨ <?php esc_html_e( 'Key Features', 'multichat-gpt' ); ?></h3>
-					<ul style="list-style: none; padding: 0;">
-						<li style="padding: 8px 0;"><strong>🤖 ChatGPT Integration:</strong> <?php esc_html_e( 'Uses GPT-3.5-turbo model for intelligent responses', 'multichat-gpt' ); ?></li>
-						<li style="padding: 8px 0;"><strong>🌍 Multi-Language:</strong> <?php esc_html_e( 'Full WPML support for 60+ languages', 'multichat-gpt' ); ?></li>
-						<li style="padding: 8px 0;"><strong>📚 Auto Indexing:</strong> <?php esc_html_e( 'Automatically scan your sitemap and build knowledge base', 'multichat-gpt' ); ?></li>
-						<li style="padding: 8px 0;"><strong>❓ FAQ Management:</strong> <?php esc_html_e( 'Create custom FAQs without coding', 'multichat-gpt' ); ?></li>
-						<li style="padding: 8px 0;"><strong>💬 Floating Widget:</strong> <?php esc_html_e( 'Beautiful chat widget on your website', 'multichat-gpt' ); ?></li>
-						<li style="padding: 8px 0;"><strong>⚡ Smart Caching:</strong> <?php esc_html_e( 'Permanent knowledge base caching for performance', 'multichat-gpt' ); ?></li>
+					<h3 style="margin-top: 0;">🤖 <?php esc_html_e( 'Core Features', 'multichat-gpt' ); ?></h3>
+					<ul style="list-style: none; padding: 0; margin: 0;">
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'ChatGPT Integration', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Connects to OpenAI GPT-3.5-turbo API for intelligent, context-aware responses to user questions.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Floating Chat Widget', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Polished, animated floating chat bubble that opens a full chat window on your site frontend.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Configurable Widget Position', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Place the widget at bottom-right or bottom-left from admin settings, synced to the frontend.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Auto Knowledge Base from Sitemap', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Scans your sitemap.xml, crawls each page, and builds a permanent knowledge base for GPT context.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Elementor Compatibility', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Content crawler targets Elementor container classes for better content extraction.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'JSON-LD Structured Data Extraction', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Parses application/ld+json schema markup from pages for richer knowledge base data.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Custom FAQ Management', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Dedicated multichat_faq custom post type with WordPress editor for creating FAQ entries.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'FAQ Categories Taxonomy', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Hierarchical taxonomy for organizing FAQs into categories.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Combined Knowledge Base', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Chat responses draw from both sitemap-crawled content AND custom FAQs merged together.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Permanent KB Caching', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Knowledge base is stored permanently until manually cleared or re-scanned.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0;">
+							<strong><?php esc_html_e( 'Manual Cache Management', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Admin buttons to scan, re-scan, and clear the knowledge base on demand.', 'multichat-gpt' ); ?>
+						</li>
+					</ul>
+				</div>
+
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- MULTI-LANGUAGE / WPML -->
+				<!-- ═══════════════════════════════════════════ -->
+				<div style="background: #fff; padding: 25px; margin-bottom: 25px; border: 1px solid #ddd; border-radius: 4px;">
+					<h3 style="margin-top: 0;">🌍 <?php esc_html_e( 'Multi-Language & WPML', 'multichat-gpt' ); ?></h3>
+					<ul style="list-style: none; padding: 0; margin: 0;">
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Full WPML Integration', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Auto-detects WPML and provides per-language knowledge base management.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Per-Language Sitemap Scanning', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Discovers and scans language-specific sitemaps for each WPML language.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Per-Language KB Caching', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Separate cache keys per language so each knowledge base is independent.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Per-Language Cache Controls', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Scan or clear individual language KBs or all at once from the admin dashboard.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'WPML-Translatable FAQ Post Type', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'FAQs are registered as translatable with WPML for multi-language FAQ content.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0;">
+							<strong><?php esc_html_e( 'Language-Aware Chat Responses', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'GPT system prompt instructs the AI to respond in the user\'s language (EN, AR, ES, FR).', 'multichat-gpt' ); ?>
+						</li>
+					</ul>
+				</div>
+
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- FRONTEND WIDGET -->
+				<!-- ═══════════════════════════════════════════ -->
+				<div style="background: #fff; padding: 25px; margin-bottom: 25px; border: 1px solid #ddd; border-radius: 4px;">
+					<h3 style="margin-top: 0;">💬 <?php esc_html_e( 'Frontend Widget', 'multichat-gpt' ); ?></h3>
+					<ul style="list-style: none; padding: 0; margin: 0;">
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Multilingual Widget UI', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Built-in translations for English, Arabic, Spanish, and French for all widget strings.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'WPML String Translation Support', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Widget labels are passed through WPML string translation filters for custom translations.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Chat History Persistence', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Saves last 20 messages in localStorage and notifies returning users.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Loading States', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Disables input and button with "Sending..." indicator while waiting for API response.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Keyboard Support', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Press Enter to send messages instantly.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Dark Mode Support', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Automatic dark theme via CSS prefers-color-scheme media query.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Responsive Design', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Mobile-friendly with viewport-adapted sizing for screens 480px and below.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0;">
+							<strong><?php esc_html_e( 'Smooth Animations', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Slide-in transitions for chat window open/close and message appearance.', 'multichat-gpt' ); ?>
+						</li>
+					</ul>
+				</div>
+
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- ADMIN DASHBOARD -->
+				<!-- ═══════════════════════════════════════════ -->
+				<div style="background: #fff; padding: 25px; margin-bottom: 25px; border: 1px solid #ddd; border-radius: 4px;">
+					<h3 style="margin-top: 0;">⚙️ <?php esc_html_e( 'Admin Dashboard', 'multichat-gpt' ); ?></h3>
+					<ul style="list-style: none; padding: 0; margin: 0;">
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Dedicated Plugin Menu', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Top-level "MultiChat GPT" menu in WP admin with custom SVG icon.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Settings Page', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'API key, widget position, and sitemap URL configuration via WP Settings API.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Chat FAQs Submenu', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Direct link to the FAQ post type list under the plugin menu.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'About Page', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Version info, complete feature list, quick-start guide, and support links.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'WPML Multi-Language Dashboard', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Table showing each language\'s cache status, pages indexed, last scan time, with scan/clear buttons.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0;">
+							<strong><?php esc_html_e( 'Single-Language Dashboard', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'For non-WPML sites: KB status, pages indexed, cache state, scan/clear controls.', 'multichat-gpt' ); ?>
+						</li>
+					</ul>
+				</div>
+
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- REST API & AJAX -->
+				<!-- ═══════════════════════════════════════════ -->
+				<div style="background: #fff; padding: 25px; margin-bottom: 25px; border: 1px solid #ddd; border-radius: 4px;">
+					<h3 style="margin-top: 0;">🔌 <?php esc_html_e( 'REST API & AJAX', 'multichat-gpt' ); ?></h3>
+					<ul style="list-style: none; padding: 0; margin: 0;">
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong>POST /multichat/v1/ask</strong> —
+							<?php esc_html_e( 'Public endpoint for chat requests (message + language).', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong>GET /multichat/v1/faqs</strong> —
+							<?php esc_html_e( 'Public endpoint to retrieve FAQs by language.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0;">
+							<strong><?php esc_html_e( 'AJAX FAQ Management', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Admin AJAX handlers for creating, deleting, and listing FAQs.', 'multichat-gpt' ); ?>
+						</li>
+					</ul>
+				</div>
+
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- SECURITY & PERFORMANCE -->
+				<!-- ═══════════════════════════════════════════ -->
+				<div style="background: #fff; padding: 25px; margin-bottom: 25px; border: 1px solid #ddd; border-radius: 4px;">
+					<h3 style="margin-top: 0;">🔒 <?php esc_html_e( 'Security & Performance', 'multichat-gpt' ); ?></h3>
+					<ul style="list-style: none; padding: 0; margin: 0;">
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'API Rate Limiting', 'multichat-gpt' ); ?></strong> —
+							<span style="background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #2e7d32; font-weight: bold;">NEW in v1.2.2</span>
+							<?php esc_html_e( 'IP-based rate limiting (10 requests/minute) on the /ask endpoint to protect your OpenAI billing from abuse.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Message Length Limit', 'multichat-gpt' ); ?></strong> —
+							<span style="background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #2e7d32; font-weight: bold;">NEW in v1.2.2</span>
+							<?php esc_html_e( 'User messages are capped at 500 characters (server-side + client-side) to prevent token abuse.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Optimised KB Storage', 'multichat-gpt' ); ?></strong> —
+							<span style="background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #2e7d32; font-weight: bold;">NEW in v1.2.2</span>
+							<?php esc_html_e( 'Large knowledge base data stored with autoload disabled so it is not loaded into memory on every page request.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Graceful Rate Limit UX', 'multichat-gpt' ); ?></strong> —
+							<span style="background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #2e7d32; font-weight: bold;">NEW in v1.2.2</span>
+							<?php esc_html_e( 'Frontend widget shows a friendly "Too many requests" message in all 4 languages when rate limited.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Singleton Pattern', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Main plugin class uses get_instance() singleton to prevent multiple instantiations.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Keyword-Based Relevance Matching', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Finds the top 3 most relevant KB chunks per user question via intelligent word matching.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Content Noise Removal', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Strips common navigation and footer text patterns from crawled content.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Rate-Limited Crawling', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( '300ms delay between page crawls to be respectful to the server.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+							<strong><?php esc_html_e( 'Nonce Verification', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'All admin AJAX handlers protected with WordPress nonce verification and capability checks.', 'multichat-gpt' ); ?>
+						</li>
+						<li style="padding: 8px 0;">
+							<strong><?php esc_html_e( 'Activation / Deactivation Hooks', 'multichat-gpt' ); ?></strong> —
+							<?php esc_html_e( 'Sets up default options on activation and flushes rewrite rules on deactivation.', 'multichat-gpt' ); ?>
+						</li>
+					</ul>
+				</div>
+
+				<!-- ═══════════════════════════════════════════ -->
+				<!-- WHAT'S NEW IN v1.2.2 -->
+				<!-- ═══════════════════════════════════════════ -->
+				<div style="background: #e8f5e9; padding: 25px; margin-bottom: 25px; border-left: 4px solid #4caf50; border-radius: 4px;">
+					<h3 style="margin-top: 0;">🆕 <?php esc_html_e( 'What\'s New in v1.2.2', 'multichat-gpt' ); ?></h3>
+					<ul style="line-height: 1.8; margin: 0; padding-left: 20px;">
+						<li><strong><?php esc_html_e( 'API Rate Limiting', 'multichat-gpt' ); ?></strong> — <?php esc_html_e( 'Protects your OpenAI billing with 10 requests per IP per minute throttling via WordPress transients.', 'multichat-gpt' ); ?></li>
+						<li><strong><?php esc_html_e( 'Message Length Cap', 'multichat-gpt' ); ?></strong> — <?php esc_html_e( '500 character limit on chat input (both server-side truncation and client-side maxlength).', 'multichat-gpt' ); ?></li>
+						<li><strong><?php esc_html_e( 'Disabled Autoload on KB Data', 'multichat-gpt' ); ?></strong> — <?php esc_html_e( 'Large knowledge base options no longer autoloaded on every WordPress page load, improving site performance.', 'multichat-gpt' ); ?></li>
+						<li><strong><?php esc_html_e( 'Widget Position from Admin Settings', 'multichat-gpt' ); ?></strong> — <?php esc_html_e( 'The widget position setting now properly flows from PHP admin settings to the frontend JavaScript.', 'multichat-gpt' ); ?></li>
+						<li><strong><?php esc_html_e( 'Rate Limit Error Messages', 'multichat-gpt' ); ?></strong> — <?php esc_html_e( 'Friendly "Too many requests" messages displayed in English, Arabic, Spanish, and French.', 'multichat-gpt' ); ?></li>
+						<li><strong><?php esc_html_e( 'Expanded About Page', 'multichat-gpt' ); ?></strong> — <?php esc_html_e( 'Complete feature catalogue with all 40+ features organized by category.', 'multichat-gpt' ); ?></li>
 					</ul>
 				</div>
 
@@ -88,30 +324,34 @@ class MultiChat_Admin_Page {
 						<li><?php esc_html_e( 'Get your OpenAI API key from ', 'multichat-gpt' ); ?><a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></li>
 						<li><?php esc_html_e( 'Go to MultiChat GPT → Settings', 'multichat-gpt' ); ?></li>
 						<li><?php esc_html_e( 'Paste your API key in the OpenAI API Key field', 'multichat-gpt' ); ?></li>
+						<li><?php esc_html_e( 'Choose your widget position (Bottom Right or Bottom Left)', 'multichat-gpt' ); ?></li>
 						<li><?php esc_html_e( 'Click "Scan Sitemap Now" to index your website content', 'multichat-gpt' ); ?></li>
-						<li><?php esc_html_e( '(Optional) Add custom FAQs in Chat FAQs section', 'multichat-gpt' ); ?></li>
-						<li><?php esc_html_e( 'Chat widget will appear on your website!', 'multichat-gpt' ); ?></li>
+						<li><?php esc_html_e( '(Optional) Add custom FAQs via MultiChat GPT → Chat FAQs', 'multichat-gpt' ); ?></li>
+						<li><?php esc_html_e( 'The chat widget will appear on your website automatically!', 'multichat-gpt' ); ?></li>
 					</ol>
 				</div>
 
-				<!-- Support -->
+				<!-- Support — UPDATED: Added LinkedIn link -->
 				<div style="background: #e8f5e9; padding: 25px; margin-bottom: 25px; border-left: 4px solid #4caf50; border-radius: 4px;">
 					<h3 style="margin-top: 0;">🆘 <?php esc_html_e( 'Support & Documentation', 'multichat-gpt' ); ?></h3>
 					<p>
 						<strong><?php esc_html_e( 'Documentation:', 'multichat-gpt' ); ?></strong><br>
 						<a href="https://github.com/Claude12/multichat-gpt" target="_blank">GitHub Repository</a> | 
-						<a href="https://github.com/Claude12/multichat-gpt/issues" target="_blank"><?php esc_html_e( 'Report Issues', 'multichat-gpt' ); ?></a>
+						<a href="https://github.com/Claude12/multichat-gpt/issues" target="_blank"><?php esc_html_e( 'Report Issues', 'multichat-gpt' ); ?></a> |
+						<a href="https://www.linkedin.com/in/claudius-sachinda-45670317a/" target="_blank"><?php esc_html_e( 'Connect on LinkedIn', 'multichat-gpt' ); ?></a>
 					</p>
 				</div>
 
-				<!-- Author Info -->
+				<!-- Author Info — UPDATED: Added LinkedIn link -->
 				<div style="background: #f5f5f5; padding: 25px; border: 1px solid #ddd; border-radius: 4px;">
 					<h3 style="margin-top: 0;">👨‍💻 <?php esc_html_e( 'About the Author', 'multichat-gpt' ); ?></h3>
 					<p>
-						<?php esc_html_e( 'MultiChat GPT is developed and maintained as an open-source WordPress plugin.', 'multichat-gpt' ); ?>
+						<?php esc_html_e( 'MultiChat GPT is developed and maintained by', 'multichat-gpt' ); ?>
+						<a href="https://www.linkedin.com/in/claudius-sachinda-45670317a/" target="_blank"><strong>Claudius Sachinda</strong></a>
+						<?php esc_html_e( 'as an open-source WordPress plugin.', 'multichat-gpt' ); ?>
 					</p>
 					<p>
-						<strong><?php esc_html_e( 'Version:', 'multichat-gpt' ); ?></strong> 1.2.1<br>
+						<strong><?php esc_html_e( 'Version:', 'multichat-gpt' ); ?></strong> <?php echo esc_html( MULTICHAT_GPT_VERSION ); ?><br>
 						<strong><?php esc_html_e( 'Requirements:', 'multichat-gpt' ); ?></strong> <?php esc_html_e( 'WordPress 5.6+, PHP 7.4+', 'multichat-gpt' ); ?><br>
 						<strong><?php esc_html_e( 'License:', 'multichat-gpt' ); ?></strong> <?php esc_html_e( 'GPL v2 or later', 'multichat-gpt' ); ?>
 					</p>
