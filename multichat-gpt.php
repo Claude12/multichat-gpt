@@ -771,12 +771,45 @@ class MultiChat_GPT
 	 */
 	public function add_admin_menu()
 	{
-		add_options_page(
+		// Add top-level menu
+		add_menu_page(
 			__('MultiChat GPT', 'multichat-gpt'),
 			__('MultiChat GPT', 'multichat-gpt'),
 			'manage_options',
 			'multichat-gpt',
-			[$this, 'render_admin_page']
+			[$this, 'render_settings_page'],
+			'dashicons-format-chat',
+			30
+		);
+
+		// Add Settings submenu (first item, replaces the default duplicate)
+		add_submenu_page(
+			'multichat-gpt',
+			__('Settings', 'multichat-gpt'),
+			__('Settings', 'multichat-gpt'),
+			'manage_options',
+			'multichat-gpt',
+			[$this, 'render_settings_page']
+		);
+
+		// Add Chat FAQs submenu
+		add_submenu_page(
+			'multichat-gpt',
+			__('Chat FAQs', 'multichat-gpt'),
+			__('Chat FAQs', 'multichat-gpt'),
+			'manage_options',
+			'multichat-gpt-faqs',
+			[$this, 'render_faqs_page']
+		);
+
+		// Add About submenu
+		add_submenu_page(
+			'multichat-gpt',
+			__('About', 'multichat-gpt'),
+			__('About', 'multichat-gpt'),
+			'manage_options',
+			'multichat-gpt-about',
+			[$this, 'render_about_page']
 		);
 	}
 
@@ -883,12 +916,30 @@ class MultiChat_GPT
 	}
 
 	/**
-	 * Render admin page
+	 * Render Settings page
 	 */
-	public function render_admin_page()
+	public function render_settings_page()
 	{
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-admin-page.php';
-		MultiChat_Admin_Page::render();
+		MultiChat_Admin_Page::render_settings();
+	}
+
+	/**
+	 * Render Chat FAQs page
+	 */
+	public function render_faqs_page()
+	{
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-admin-page.php';
+		MultiChat_Admin_Page::render_faqs();
+	}
+
+	/**
+	 * Render About page
+	 */
+	public function render_about_page()
+	{
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-admin-page.php';
+		MultiChat_Admin_Page::render_about();
 	}
 
 	/**
