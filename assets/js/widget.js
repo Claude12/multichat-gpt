@@ -1,7 +1,7 @@
 /**
  * MultiChat GPT Frontend Widget
  * Handles the floating chat interface
- * FIXED: Removed nonce requirement for proper REST API communication
+ * Optimized with debouncing and event delegation
  */
 
 (function () {
@@ -11,7 +11,8 @@
 	const config = {
 		restUrl: multiChatGPT?.restUrl || '/wp-json/multichat/v1/ask',
 		language: multiChatGPT?.language || 'en',
-		position: localStorage.getItem('multichat_position') || 'bottom-right',
+		position: multiChatGPT?.position || localStorage.getItem('multichat_position') || 'bottom-right',
+		debounceDelay: 300,
 	};
 
 	// Chat state
@@ -21,13 +22,32 @@
 		isLoading: false,
 	};
 
+	// DOM element references
+	let elements = {};
+
 	/**
 	 * Initialize the widget
 	 */
 	function init() {
 		createWidgetHTML();
+		cacheElements();
 		attachEventListeners();
 		loadChatHistory();
+	}
+
+	/**
+	 * Cache DOM elements for better performance
+	 */
+	function cacheElements() {
+		elements = {
+			container: document.getElementById('multichat-gpt-widget'),
+			chatWindow: document.getElementById('multichat-chat-window'),
+			toggleBtn: document.getElementById('multichat-toggle-btn'),
+			closeBtn: document.getElementById('multichat-close-btn'),
+			sendBtn: document.getElementById('multichat-send-btn'),
+			input: document.getElementById('multichat-input'),
+			messages: document.getElementById('multichat-messages'),
+		};
 	}
 
 	/**
@@ -43,23 +63,24 @@
 			<div id="multichat-chat-window" class="multichat-chat-window">
 				<div class="multichat-header">
 					<h3>${getTranslation('chatTitle')}</h3>
-					<button id="multichat-close-btn" class="multichat-close-btn" aria-label="Close chat">
+					<button id="multichat-close-btn" class="multichat-close-btn" aria-label="${getTranslation('closeAria')}">
 						<span>×</span>
 					</button>
 				</div>
-				<div class="multichat-messages" id="multichat-messages"></div>
+				<div class="multichat-messages" id="multichat-messages" role="log" aria-live="polite"></div>
 				<div class="multichat-input-area">
 					<input
 						type="text"
 						id="multichat-input"
 						class="multichat-input"
 						placeholder="${getTranslation('inputPlaceholder')}"
+						aria-label="${getTranslation('inputAria')}"
 						disabled
 					/>
 					<button
 						id="multichat-send-btn"
 						class="multichat-send-btn"
-						aria-label="Send message"
+						aria-label="${getTranslation('sendAria')}"
 						disabled
 					>
 						${getTranslation('sendButton')}
@@ -67,8 +88,8 @@
 				</div>
 			</div>
 
-			<button id="multichat-toggle-btn" class="multichat-toggle-btn" aria-label="Open chat">
-				<span class="multichat-icon">💬</span>
+			<button id="multichat-toggle-btn" class="multichat-toggle-btn" aria-label="${getTranslation('openAria')}">
+				<span class="multichat-icon" aria-hidden="true">💬</span>
 			</button>
 		`;
 
@@ -76,31 +97,49 @@
 	}
 
 	/**
-	 * Attach event listeners
+	 * Attach event listeners with delegation
 	 */
 	function attachEventListeners() {
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
-		const closeBtn = document.getElementById('multichat-close-btn');
-		const sendBtn = document.getElementById('multichat-send-btn');
-		const input = document.getElementById('multichat-input');
-
-		toggleBtn?.addEventListener('click', toggleChat);
-		closeBtn?.addEventListener('click', closeChat);
-		sendBtn?.addEventListener('click', sendMessage);
-
-		input?.addEventListener('keypress', (e) => {
-			if (e.key === 'Enter' && !e.shiftKey && !chatState.isLoading) {
-				sendMessage();
-			}
-		});
+		// Use event delegation on container
+		if (elements.container) {
+			elements.container.addEventListener('click', handleClick);
+			elements.container.addEventListener('keypress', handleKeyPress);
+		}
 
 		// Enable input after widget loads
 		setTimeout(() => {
-			if (input) {
-				input.disabled = false;
-				sendBtn.disabled = false;
+			if (elements.input && elements.sendBtn) {
+				elements.input.disabled = false;
+				elements.sendBtn.disabled = false;
 			}
 		}, 500);
+	}
+
+	/**
+	 * Handle click events with delegation
+	 */
+	function handleClick(e) {
+		const target = e.target.closest('button');
+		if (!target) return;
+
+		const id = target.id;
+		if (id === 'multichat-toggle-btn') {
+			toggleChat();
+		} else if (id === 'multichat-close-btn') {
+			closeChat();
+		} else if (id === 'multichat-send-btn' && !chatState.isLoading) {
+			sendMessage();
+		}
+	}
+
+	/**
+	 * Handle keypress events
+	 */
+	function handleKeyPress(e) {
+		if (e.target.id === 'multichat-input' && e.key === 'Enter' && !e.shiftKey && !chatState.isLoading) {
+			e.preventDefault();
+			sendMessage();
+		}
 	}
 
 	/**
@@ -118,17 +157,15 @@
 	 * Open chat window
 	 */
 	function openChat() {
-		const chatWindow = document.getElementById('multichat-chat-window');
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
-
-		if (chatWindow) {
-			chatWindow.classList.add('multichat-open');
-			toggleBtn?.classList.add('multichat-hidden');
+		if (elements.chatWindow && elements.toggleBtn) {
+			elements.chatWindow.classList.add('multichat-open');
+			elements.toggleBtn.classList.add('multichat-hidden');
+			elements.toggleBtn.setAttribute('aria-label', getTranslation('closeAria'));
 			chatState.isOpen = true;
 
-			// Focus input
+			// Focus input for accessibility
 			setTimeout(() => {
-				document.getElementById('multichat-input')?.focus();
+				elements.input?.focus();
 			}, 200);
 		}
 	}
@@ -137,23 +174,34 @@
 	 * Close chat window
 	 */
 	function closeChat() {
-		const chatWindow = document.getElementById('multichat-chat-window');
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
-
-		if (chatWindow) {
-			chatWindow.classList.remove('multichat-open');
-			toggleBtn?.classList.remove('multichat-hidden');
+		if (elements.chatWindow && elements.toggleBtn) {
+			elements.chatWindow.classList.remove('multichat-open');
+			elements.toggleBtn.classList.remove('multichat-hidden');
+			elements.toggleBtn.setAttribute('aria-label', getTranslation('openAria'));
 			chatState.isOpen = false;
 		}
 	}
 
 	/**
+	 * Debounce function
+	 */
+	function debounce(func, wait) {
+		let timeout;
+		return function executedFunction(...args) {
+			const later = () => {
+				clearTimeout(timeout);
+				func(...args);
+			};
+			clearTimeout(timeout);
+			timeout = setTimeout(later, wait);
+		};
+	}
+
+	/**
 	 * Send message to backend
-	 * FIXED: Removed nonce requirement, using simple fetch POST
 	 */
 	async function sendMessage() {
-		const input = document.getElementById('multichat-input');
-		const message = input?.value?.trim();
+		const message = elements.input?.value?.trim();
 
 		if (!message || chatState.isLoading) {
 			return;
@@ -161,7 +209,7 @@
 
 		// Add user message to UI
 		addMessageToUI(message, 'user');
-		input.value = '';
+		elements.input.value = '';
 
 		// Set loading state
 		chatState.isLoading = true;
@@ -203,21 +251,23 @@
 	 * Add message to chat UI
 	 */
 	function addMessageToUI(message, sender = 'user') {
-		const messagesContainer = document.getElementById('multichat-messages');
-		if (!messagesContainer) return;
+		if (!elements.messages) return;
 
 		const messageEl = document.createElement('div');
 		messageEl.className = `multichat-message multichat-${sender}`;
+		messageEl.setAttribute('role', sender === 'user' ? 'note' : 'article');
 
 		const messageContent = document.createElement('div');
 		messageContent.className = 'multichat-message-content';
 		messageContent.textContent = message;
 
 		messageEl.appendChild(messageContent);
-		messagesContainer.appendChild(messageEl);
+		elements.messages.appendChild(messageEl);
 
-		// Auto-scroll to bottom
-		messagesContainer.scrollTop = messagesContainer.scrollHeight;
+		// Auto-scroll to bottom with smooth behavior
+		requestAnimationFrame(() => {
+			elements.messages.scrollTop = elements.messages.scrollHeight;
+		});
 
 		// Store in chat state
 		chatState.messages.push({
@@ -231,17 +281,15 @@
 	 * Update input state based on loading
 	 */
 	function updateInputState() {
-		const input = document.getElementById('multichat-input');
-		const sendBtn = document.getElementById('multichat-send-btn');
-
-		if (input && sendBtn) {
-			input.disabled = chatState.isLoading;
-			sendBtn.disabled = chatState.isLoading;
+		if (elements.input && elements.sendBtn) {
+			elements.input.disabled = chatState.isLoading;
+			elements.sendBtn.disabled = chatState.isLoading;
+			elements.input.setAttribute('aria-busy', chatState.isLoading);
 
 			if (chatState.isLoading) {
-				sendBtn.textContent = getTranslation('loadingButton');
+				elements.sendBtn.textContent = getTranslation('loadingButton');
 			} else {
-				sendBtn.textContent = getTranslation('sendButton');
+				elements.sendBtn.textContent = getTranslation('sendButton');
 			}
 		}
 	}
@@ -280,13 +328,13 @@
 				localStorage.getItem('multichat_history') || '[]'
 			);
 
-			if (history.length > 0) {
+			if (history.length > 0 && elements.messages) {
 				const welcomeMsg = document.createElement('div');
 				welcomeMsg.className = 'multichat-message multichat-info';
+				welcomeMsg.setAttribute('role', 'status');
 				welcomeMsg.textContent = getTranslation('previousChats');
 
-				const messagesContainer = document.getElementById('multichat-messages');
-				messagesContainer?.appendChild(welcomeMsg);
+				elements.messages.appendChild(welcomeMsg);
 			}
 		} catch (error) {
 			console.error('Failed to load chat history:', error);
@@ -303,9 +351,12 @@
 				inputPlaceholder: 'Ask me anything...',
 				sendButton: 'Send',
 				loadingButton: 'Sending...',
-				errorMessage:
-					'Sorry, an error occurred. Please try again later.',
+				errorMessage: 'Sorry, an error occurred. Please try again later.',
 				previousChats: 'Previous chat history loaded.',
+				openAria: 'Open chat',
+				closeAria: 'Close chat',
+				inputAria: 'Type your message',
+				sendAria: 'Send message',
 			},
 			ar: {
 				chatTitle: 'دعم الدردشة',
@@ -314,6 +365,10 @@
 				loadingButton: 'جاري الإرسال...',
 				errorMessage: 'عذرًا، حدث خطأ. يرجى المحاولة لاحقًا.',
 				previousChats: 'تم تحميل سجل الدردشة السابق.',
+				openAria: 'فتح الدردشة',
+				closeAria: 'إغلاق الدردشة',
+				inputAria: 'اكتب رسالتك',
+				sendAria: 'إرسال الرسالة',
 			},
 			es: {
 				chatTitle: 'Soporte de Chat',
@@ -322,6 +377,10 @@
 				loadingButton: 'Enviando...',
 				errorMessage: 'Lo sentimos, ocurrió un error. Intente más tarde.',
 				previousChats: 'Se cargó el historial de chat anterior.',
+				openAria: 'Abrir chat',
+				closeAria: 'Cerrar chat',
+				inputAria: 'Escribe tu mensaje',
+				sendAria: 'Enviar mensaje',
 			},
 			fr: {
 				chatTitle: 'Support de Chat',
@@ -330,6 +389,10 @@
 				loadingButton: 'Envoi en cours...',
 				errorMessage: 'Désolé, une erreur s\'est produite. Veuillez réessayer plus tard.',
 				previousChats: 'L\'historique du chat précédent a été chargé.',
+				openAria: 'Ouvrir le chat',
+				closeAria: 'Fermer le chat',
+				inputAria: 'Tapez votre message',
+				sendAria: 'Envoyer le message',
 			},
 		};
 
