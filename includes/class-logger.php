@@ -100,7 +100,7 @@ class MultiChat_GPT_Logger {
 		$logs = get_option( self::LOG_OPTION, array() );
 
 		$log_entry = array(
-			'timestamp' => current_time( 'mysql' ),
+			'timestamp' => current_time( 'timestamp' ),
 			'level'     => $level,
 			'message'   => $message,
 			'context'   => $context,

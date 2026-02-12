@@ -307,6 +307,10 @@
 
 	/**
 	 * Load chat history from local storage
+	 *
+	 * Note: This only shows a notification that history exists.
+	 * The actual messages are not re-rendered to keep the chat clean on page load.
+	 * Users start fresh each session with context awareness that previous chats occurred.
 	 */
 	function loadChatHistory() {
 		try {

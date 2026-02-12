@@ -223,6 +223,9 @@ class MultiChat_GPT_API_Handler {
 	 * Clear API cache
 	 *
 	 * Clears all cached API responses by deleting transients with the multichat_api_ prefix
+	 * Note: Uses direct SQL query as WordPress doesn't provide a method to delete by prefix.
+	 * This operation can be slow on large sites with many transients.
+	 * Consider running during low-traffic periods or via WP-CLI for large installations.
 	 *
 	 * @return void
 	 */
@@ -230,7 +233,7 @@ class MultiChat_GPT_API_Handler {
 		global $wpdb;
 
 		// Delete all transients with our prefix using direct SQL
-		// Note: WordPress doesn't provide a built-in method to delete transients by prefix
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",

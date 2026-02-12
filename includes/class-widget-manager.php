@@ -73,7 +73,6 @@ class MultiChat_GPT_Widget_Manager {
 				'restUrl'  => rest_url( 'multichat/v1/ask' ),
 				'language' => self::get_current_language(),
 				'position' => get_option( 'multichat_gpt_widget_position', 'bottom-right' ),
-				'nonce'    => wp_create_nonce( 'wp_rest' ),
 			)
 		);
 
