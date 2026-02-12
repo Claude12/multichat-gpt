@@ -240,11 +240,12 @@ class MultiChat_GPT_Knowledge_Base {
 	public function clear_cache() {
 		global $wpdb;
 
-		// Delete all KB transients.
+		// Delete all KB transients and their timeout entries.
 		$wpdb->query(
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-				$wpdb->esc_like( '_transient_multichat_gpt_kb_' ) . '%'
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_multichat_gpt_kb_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_multichat_gpt_kb_' ) . '%'
 			)
 		);
 

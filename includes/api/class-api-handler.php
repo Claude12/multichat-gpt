@@ -114,6 +114,10 @@ class MultiChat_GPT_API_Handler {
 	/**
 	 * Make API request with retry logic
 	 *
+	 * Note: Uses sleep() for exponential backoff. This is intentional for API retry scenarios
+	 * where we want to wait before retrying to avoid overwhelming the API endpoint.
+	 * The blocking behavior is acceptable here as it only affects the current request.
+	 *
 	 * @since 1.0.0
 	 * @param string $api_key        OpenAI API key.
 	 * @param string $system_message System message.
@@ -144,6 +148,7 @@ class MultiChat_GPT_API_Handler {
 				);
 
 				// Exponential backoff: wait 1s, 2s, 4s, etc.
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_log, WordPress.VIP.RestrictedFunctions.sleep_sleep
 				sleep( pow( 2, $attempts - 1 ) );
 			}
 		}
@@ -297,11 +302,12 @@ class MultiChat_GPT_API_Handler {
 	public function clear_cache() {
 		global $wpdb;
 
-		// Delete all transients with our prefix.
+		// Delete all transients and their timeout entries with our prefix.
 		$wpdb->query(
 			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-				$wpdb->esc_like( '_transient_multichat_gpt_' ) . '%'
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_multichat_gpt_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_multichat_gpt_' ) . '%'
 			)
 		);
 

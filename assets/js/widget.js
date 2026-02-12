@@ -256,15 +256,17 @@
 		const messagesContainer = document.getElementById('multichat-messages');
 		if (!messagesContainer) return;
 
-		// Use template literals for efficient DOM creation
-		const messageHTML = `
-			<div class="multichat-message multichat-${sender}">
-				<div class="multichat-message-content">${escapeHtml(message)}</div>
-			</div>
-		`;
+		// Create elements directly for better performance and security
+		const messageEl = document.createElement('div');
+		messageEl.className = `multichat-message multichat-${sender}`;
 
-		// Insert HTML in one operation
-		messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+		const messageContent = document.createElement('div');
+		messageContent.className = 'multichat-message-content';
+		// Use textContent for automatic XSS prevention
+		messageContent.textContent = message;
+
+		messageEl.appendChild(messageContent);
+		messagesContainer.appendChild(messageEl);
 
 		// Auto-scroll to bottom with debounce
 		requestAnimationFrame(() => {
@@ -277,15 +279,6 @@
 			message,
 			timestamp: new Date().toISOString(),
 		});
-	}
-
-	/**
-	 * Escape HTML to prevent XSS
-	 */
-	function escapeHtml(text) {
-		const div = document.createElement('div');
-		div.textContent = text;
-		return div.innerHTML;
 	}
 
 	/**
