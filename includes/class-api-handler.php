@@ -142,10 +142,11 @@ class MultiChat_GPT_API_Handler {
 				break;
 			}
 
-			// Wait before retry (exponential backoff).
+			// Wait before retry (exponential backoff: 1s, 2s, 4s).
 			if ( $attempt <= $this->max_retries ) {
+				$delay = pow( 2, $attempt - 1 );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_usleep
-				usleep( 1000000 * $attempt ); // 1s, 2s, etc.
+				usleep( $delay * 1000000 ); // Convert to microseconds.
 			}
 		}
 

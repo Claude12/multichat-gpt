@@ -168,7 +168,7 @@ class MultiChat_GPT_Admin_Settings {
 		$sanitized = sanitize_text_field( $value );
 
 		// Validate API key format (should start with sk-).
-		if ( ! empty( $sanitized ) && ! preg_match( '/^sk-[a-zA-Z0-9]+$/', $sanitized ) ) {
+		if ( ! empty( $sanitized ) && ! preg_match( '/^sk-[a-zA-Z0-9_-]+$/', $sanitized ) ) {
 			add_settings_error(
 				'multichat_gpt_api_key',
 				'invalid_api_key',

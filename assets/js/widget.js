@@ -26,9 +26,6 @@
 		isInitialized: false,
 	};
 
-	// Debounce timer
-	let debounceTimer = null;
-
 	/**
 	 * Lazy initialize the widget
 	 */
@@ -62,7 +59,7 @@
 			<div id="multichat-chat-window" class="multichat-chat-window">
 				<div class="multichat-header">
 					<h3>${getTranslation('chatTitle')}</h3>
-					<button id="multichat-close-btn" class="multichat-close-btn" aria-label="${getTranslation('closeButton')}">
+					<button id="multichat-close-btn" class="multichat-close-btn" aria-label="${getTranslation('closeChat')}">
 						<span aria-hidden="true">×</span>
 					</button>
 				</div>
@@ -189,13 +186,14 @@
 	 * @return {Function} Debounced function.
 	 */
 	function debounce(func, wait) {
+		let timer = null;
 		return function executedFunction(...args) {
 			const later = () => {
-				clearTimeout(debounceTimer);
+				clearTimeout(timer);
 				func(...args);
 			};
-			clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(later, wait);
+			clearTimeout(timer);
+			timer = setTimeout(later, wait);
 		};
 	}
 
@@ -223,7 +221,6 @@
 				chatWindow.classList.add('multichat-open');
 				toggleBtn?.classList.add('multichat-hidden');
 				chatState.isOpen = true;
-				toggleBtn?.setAttribute('aria-label', getTranslation('closeChat'));
 
 				// Focus input after animation
 				setTimeout(() => {
@@ -246,7 +243,6 @@
 				chatWindow.classList.remove('multichat-open');
 				toggleBtn?.classList.remove('multichat-hidden');
 				chatState.isOpen = false;
-				toggleBtn?.setAttribute('aria-label', getTranslation('openChat'));
 			});
 		}
 	}

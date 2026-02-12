@@ -236,7 +236,7 @@ class MultiChat_GPT_REST_Endpoints {
 		);
 
 		foreach ( $headers_to_check as $header ) {
-			if ( ! empty( $_SERVER[ $header ] ) ) {
+			if ( isset( $_SERVER[ $header ] ) && ! empty( $_SERVER[ $header ] ) ) {
 				$ip = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
 				break;
 			}

@@ -126,7 +126,7 @@ class MultiChat_GPT_Knowledge_Base {
 		$lang_name = isset( $language_names[ $language ] ) ? $language_names[ $language ] : $language;
 
 		$kb_content = ! empty( $relevant_chunks )
-			? implode( '\n\n', $relevant_chunks )
+			? implode( "\n\n", $relevant_chunks )
 			: __( 'No relevant knowledge base available.', 'multichat-gpt' );
 
 		$system_message = sprintf(
