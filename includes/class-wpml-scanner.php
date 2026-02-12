@@ -201,7 +201,8 @@ class MultiChat_WPML_Scanner {
 	}
 
 	/**
-	 * Cache KB for a specific language
+	 * Cache KB for a specific language.
+	 * Uses autoload=false so large KB data is NOT loaded on every page.
 	 *
 	 * @param string $language_code Language code
 	 * @param array  $kb Knowledge base chunks
@@ -211,8 +212,14 @@ class MultiChat_WPML_Scanner {
 		$cache_key = self::get_language_cache_key( $language_code );
 		$timestamp_key = self::get_language_timestamp_key( $language_code );
 
-		update_option( $cache_key, $kb );
-		update_option( $timestamp_key, current_time( 'mysql' ) );
+		// ── CHANGED: delete + add_option with autoload=false ──
+		// update_option won't change autoload on existing rows,
+		// so we delete first then add with autoload disabled.
+		delete_option( $cache_key );
+		add_option( $cache_key, $kb, '', false );
+
+		delete_option( $timestamp_key );
+		add_option( $timestamp_key, current_time( 'mysql' ), '', false );
 
 		return true;
 	}

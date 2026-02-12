@@ -3,7 +3,7 @@
  * Plugin Name: MultiChat GPT
  * Plugin URI: https://example.com/multichat-gpt
  * Description: ChatGPT-powered multilingual chat widget for WordPress Multisite + WPML
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: Claudius Sachinda
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Define plugin constants
  */
-define( 'MULTICHAT_GPT_VERSION', '1.2.1' );
+define( 'MULTICHAT_GPT_VERSION', '1.2.2' );
 define( 'MULTICHAT_GPT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MULTICHAT_GPT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MULTICHAT_GPT_BASENAME', plugin_basename( __FILE__ ) );
@@ -45,6 +45,16 @@ class MultiChat_GPT {
 	 * ChatGPT API Endpoint
 	 */
 	private $api_endpoint = 'https://api.openai.com/v1/chat/completions';
+
+	/**
+	 * Rate limit: max requests per window per IP
+	 */
+	private $rate_limit_max = 10;
+
+	/**
+	 * Rate limit: window in seconds (1 minute)
+	 */
+	private $rate_limit_window = 60;
 
 	/**
 	 * Get instance of the class
@@ -165,6 +175,46 @@ class MultiChat_GPT {
 	}
 
 	/**
+	 * Check rate limit for the chat endpoint to protect OpenAI billing.
+	 * Allows $rate_limit_max requests per $rate_limit_window seconds per IP.
+	 *
+	 * @return true|WP_REST_Response True if allowed, WP_REST_Response error if rate limited.
+	 */
+	private function check_rate_limit() {
+		$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+		// Sanitize IP for use as transient key
+		$ip_key = 'multichat_rl_' . md5( $ip );
+
+		$current = get_transient( $ip_key );
+
+		if ( false === $current ) {
+			// First request in this window
+			set_transient( $ip_key, 1, $this->rate_limit_window );
+			return true;
+		}
+
+		$current = intval( $current );
+
+		if ( $current >= $this->rate_limit_max ) {
+			return new WP_REST_Response(
+				[
+					'success' => false,
+					'message' => __( 'Too many requests. Please wait a moment and try again.', 'multichat-gpt' ),
+				],
+				429
+			);
+		}
+
+		// Increment counter without resetting the expiry
+		// We use a direct update to keep the existing TTL
+		$timeout = get_option( '_transient_timeout_' . $ip_key );
+		$remaining = $timeout ? ( $timeout - time() ) : $this->rate_limit_window;
+		set_transient( $ip_key, $current + 1, max( 1, $remaining ) );
+
+		return true;
+	}
+
+	/**
 	 * Get combined knowledge base (Sitemap KB + FAQs)
 	 */
 	private function get_combined_knowledge_base( $language = 'en' ) {
@@ -193,6 +243,12 @@ class MultiChat_GPT {
 	 * @return WP_REST_Response
 	 */
 	public function handle_chat_request( $request ) {
+		// ── Rate limit check to protect OpenAI billing ──
+		$rate_check = $this->check_rate_limit();
+		if ( $rate_check !== true ) {
+			return $rate_check;
+		}
+
 		// Get parameters
 		$user_message = sanitize_text_field( $request->get_param( 'message' ) );
 		$language     = sanitize_text_field( $request->get_param( 'language' ) );
@@ -206,6 +262,11 @@ class MultiChat_GPT {
 				],
 				400
 			);
+		}
+
+		// Enforce max message length to avoid token abuse (500 chars)
+		if ( mb_strlen( $user_message ) > 500 ) {
+			$user_message = mb_substr( $user_message, 0, 500 );
 		}
 
 		// Get API key from settings
@@ -710,6 +771,9 @@ class MultiChat_GPT {
 		// Localize script
 		$current_language = $this->get_current_language();
 
+		// ── NEW: Read widget position from admin settings ──
+		$widget_position = get_option( 'multichat_gpt_widget_position', 'bottom-right' );
+
 		// Get translations from WPML
 		$translations = [
 			'chatTitle'        => apply_filters( 'wpml_translate_single_string', 'Chat Support', 'multichat-gpt', 'chat_title' ),
@@ -725,6 +789,7 @@ class MultiChat_GPT {
 			[
 				'restUrl'      => esc_url( rest_url( 'multichat/v1/ask' ) ),
 				'language'     => $current_language,
+				'position'     => $widget_position, // ← NEW: pass position to JS
 				'translations' => $translations,
 			]
 		);

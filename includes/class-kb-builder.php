@@ -91,7 +91,8 @@ class MultiChat_KB_Builder {
 	}
 
 	/**
-	 * Cache knowledge base for a language
+	 * Cache knowledge base for a language.
+	 * Uses autoload=false so large KB data is NOT loaded on every page.
 	 *
 	 * @param array  $kb Knowledge base chunks
 	 * @param string $language_code Language code
@@ -105,9 +106,14 @@ class MultiChat_KB_Builder {
 			return MultiChat_WPML_Scanner::cache_language_kb( $language_code, $kb );
 		}
 
-		// Fallback to single-language caching
-		update_option( self::KB_CACHE_KEY, $kb );
-		update_option( self::KB_META_KEY, current_time( 'mysql' ) );
+		// ── CHANGED: third param `false` disables autoload for large KB data ──
+		// Delete first so we can re-add with autoload=false
+		// (update_option won't change autoload on an existing row)
+		delete_option( self::KB_CACHE_KEY );
+		add_option( self::KB_CACHE_KEY, $kb, '', false );
+
+		delete_option( self::KB_META_KEY );
+		add_option( self::KB_META_KEY, current_time( 'mysql' ), '', false );
 
 		return true;
 	}

@@ -2,6 +2,8 @@
  * MultiChat GPT Frontend Widget
  * Handles the floating chat interface
  * FIXED: Removed nonce requirement for proper REST API communication
+ * FIXED: Widget position now comes from admin settings
+ * FIXED: Handles rate-limit (429) responses gracefully
  */
 
 (function () {
@@ -11,7 +13,8 @@
 	const config = {
 		restUrl: multiChatGPT?.restUrl || '/wp-json/multichat/v1/ask',
 		language: multiChatGPT?.language || 'en',
-		position: localStorage.getItem('multichat_position') || 'bottom-right',
+		// ── CHANGED: use admin setting passed via wp_localize_script ──
+		position: multiChatGPT?.position || 'bottom-right',
 	};
 
 	// Chat state
@@ -54,6 +57,7 @@
 						id="multichat-input"
 						class="multichat-input"
 						placeholder="${getTranslation('inputPlaceholder')}"
+						maxlength="500"
 						disabled
 					/>
 					<button
@@ -150,6 +154,7 @@
 	/**
 	 * Send message to backend
 	 * FIXED: Removed nonce requirement, using simple fetch POST
+	 * FIXED: Handles 429 rate-limit responses
 	 */
 	async function sendMessage() {
 		const input = document.getElementById('multichat-input');
@@ -181,7 +186,13 @@
 
 			const data = await response.json();
 
-			if (data.success) {
+			// ── NEW: Handle rate-limit (429) response ──
+			if (response.status === 429) {
+				addMessageToUI(
+					data.message || getTranslation('rateLimitMessage'),
+					'error'
+				);
+			} else if (data.success) {
 				addMessageToUI(data.message, 'assistant');
 				saveChatToHistory(message, data.message);
 			} else {
@@ -305,6 +316,8 @@
 				loadingButton: 'Sending...',
 				errorMessage:
 					'Sorry, an error occurred. Please try again later.',
+				rateLimitMessage:
+					'Too many requests. Please wait a moment and try again.',
 				previousChats: 'Previous chat history loaded.',
 			},
 			ar: {
@@ -313,6 +326,8 @@
 				sendButton: 'إرسال',
 				loadingButton: 'جاري الإرسال...',
 				errorMessage: 'عذرًا، حدث خطأ. يرجى المحاولة لاحقًا.',
+				rateLimitMessage:
+					'طلبات كثيرة جدًا. يرجى الانتظار لحظة والمحاولة مرة أخرى.',
 				previousChats: 'تم تحميل سجل الدردشة السابق.',
 			},
 			es: {
@@ -321,6 +336,8 @@
 				sendButton: 'Enviar',
 				loadingButton: 'Enviando...',
 				errorMessage: 'Lo sentimos, ocurrió un error. Intente más tarde.',
+				rateLimitMessage:
+					'Demasiadas solicitudes. Espere un momento e intente de nuevo.',
 				previousChats: 'Se cargó el historial de chat anterior.',
 			},
 			fr: {
@@ -329,6 +346,8 @@
 				sendButton: 'Envoyer',
 				loadingButton: 'Envoi en cours...',
 				errorMessage: 'Désolé, une erreur s\'est produite. Veuillez réessayer plus tard.',
+				rateLimitMessage:
+					'Trop de requêtes. Veuillez patienter un moment et réessayer.',
 				previousChats: 'L\'historique du chat précédent a été chargé.',
 			},
 		};
