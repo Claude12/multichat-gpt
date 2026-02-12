@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: MultiChat GPT
  * Plugin URI: https://example.com/multichat-gpt
@@ -18,23 +17,22 @@
  */
 
 // Security: Prevent direct access
-if (! defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
  * Define plugin constants
  */
-define('MULTICHAT_GPT_VERSION', '1.0.0');
-define('MULTICHAT_GPT_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('MULTICHAT_GPT_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MULTICHAT_GPT_BASENAME', plugin_basename(__FILE__));
+define( 'MULTICHAT_GPT_VERSION', '1.0.0' );
+define( 'MULTICHAT_GPT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'MULTICHAT_GPT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'MULTICHAT_GPT_BASENAME', plugin_basename( __FILE__ ) );
 
 /**
  * Main plugin class
  */
-class MultiChat_GPT
-{
+class MultiChat_GPT {
 
 	/**
 	 * Instance of the class
@@ -58,9 +56,8 @@ class MultiChat_GPT
 	 *
 	 * @return self
 	 */
-	public static function get_instance()
-	{
-		if (null === self::$instance) {
+	public static function get_instance() {
+		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
 		return self::$instance;
@@ -69,37 +66,36 @@ class MultiChat_GPT
 	/**
 	 * Constructor
 	 */
-	public function __construct()
-	{
+	public function __construct() {
 		// Load text domain for translations
-		add_action('plugins_loaded', [$this, 'load_textdomain']);
+		add_action( 'plugins_loaded', [ $this, 'load_textdomain' ] );
 
 		// Load helper classes
 		$this->load_classes();
 
 		// Register REST API endpoint
-		add_action('rest_api_init', [$this, 'register_rest_endpoints']);
+		add_action( 'rest_api_init', [ $this, 'register_rest_endpoints' ] );
 
 		// Enqueue frontend assets
-		add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_assets']);
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
 
 		// Add admin settings page
-		add_action('admin_menu', [$this, 'add_admin_menu']);
-		add_action('admin_init', [$this, 'register_admin_settings']);
+		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
+		add_action( 'admin_init', [ $this, 'register_admin_settings' ] );
 
 		// Handle AJAX requests
-		add_action('wp_ajax_multichat_scan_sitemap', [$this, 'handle_scan_sitemap']);
+		add_action( 'wp_ajax_multichat_scan_sitemap', [ $this, 'handle_scan_sitemap' ] );
+		add_action( 'wp_ajax_multichat_clear_cache', [ $this, 'handle_clear_cache' ] );
 
 		// Activation/Deactivation hooks
-		register_activation_hook(__FILE__, [$this, 'activate_plugin']);
-		register_deactivation_hook(__FILE__, [$this, 'deactivate_plugin']);
+		register_activation_hook( __FILE__, [ $this, 'activate_plugin' ] );
+		register_deactivation_hook( __FILE__, [ $this, 'deactivate_plugin' ] );
 	}
 
 	/**
 	 * Load helper classes
 	 */
-	private function load_classes()
-	{
+	private function load_classes() {
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-sitemap-scanner.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-content-crawler.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
@@ -108,26 +104,24 @@ class MultiChat_GPT
 	/**
 	 * Load plugin text domain for translations
 	 */
-	public function load_textdomain()
-	{
+	public function load_textdomain() {
 		load_plugin_textdomain(
 			'multichat-gpt',
 			false,
-			dirname(MULTICHAT_GPT_BASENAME) . '/languages'
+			dirname( MULTICHAT_GPT_BASENAME ) . '/languages'
 		);
 	}
 
 	/**
 	 * Register REST API endpoints
 	 */
-	public function register_rest_endpoints()
-	{
+	public function register_rest_endpoints() {
 		register_rest_route(
 			'multichat/v1',
 			'/ask',
 			[
 				'methods'             => 'POST',
-				'callback'            => [$this, 'handle_chat_request'],
+				'callback'            => [ $this, 'handle_chat_request' ],
 				'permission_callback' => '__return_true',
 				'args'                => [
 					'message' => [
@@ -150,30 +144,29 @@ class MultiChat_GPT
 	 * @param WP_REST_Request $request REST request object
 	 * @return WP_REST_Response
 	 */
-	public function handle_chat_request($request)
-	{
+	public function handle_chat_request( $request ) {
 		// Get parameters
-		$user_message = sanitize_text_field($request->get_param('message'));
-		$language     = sanitize_text_field($request->get_param('language'));
+		$user_message = sanitize_text_field( $request->get_param( 'message' ) );
+		$language     = sanitize_text_field( $request->get_param( 'language' ) );
 
 		// Validate message
-		if (empty($user_message)) {
+		if ( empty( $user_message ) ) {
 			return new WP_REST_Response(
 				[
 					'success' => false,
-					'message' => __('Message cannot be empty', 'multichat-gpt'),
+					'message' => __( 'Message cannot be empty', 'multichat-gpt' ),
 				],
 				400
 			);
 		}
 
 		// Get API key from settings
-		$api_key = get_option('multichat_gpt_api_key');
-		if (empty($api_key)) {
+		$api_key = get_option( 'multichat_gpt_api_key' );
+		if ( empty( $api_key ) ) {
 			return new WP_REST_Response(
 				[
 					'success' => false,
-					'message' => __('API key not configured', 'multichat-gpt'),
+					'message' => __( 'API key not configured', 'multichat-gpt' ),
 				],
 				500
 			);
@@ -184,21 +177,21 @@ class MultiChat_GPT
 		$kb_chunks = MultiChat_KB_Builder::get_cached_knowledge_base();
 
 		// If no cached KB, use static knowledge base
-		if (! $kb_chunks) {
-			$kb_chunks = $this->get_knowledge_base_chunks($language);
+		if ( ! $kb_chunks ) {
+			$kb_chunks = $this->get_knowledge_base_chunks( $language );
 		}
 
 		// Find relevant KB chunks based on user message
-		$relevant_chunks = $this->find_relevant_chunks($user_message, $kb_chunks);
+		$relevant_chunks = $this->find_relevant_chunks( $user_message, $kb_chunks );
 
 		// Build the ChatGPT prompt
-		$system_message = $this->build_system_message($language, $relevant_chunks);
+		$system_message = $this->build_system_message( $language, $relevant_chunks );
 
 		// Call ChatGPT API
-		$response = $this->call_chatgpt_api($api_key, $system_message, $user_message);
+		$response = $this->call_chatgpt_api( $api_key, $system_message, $user_message );
 
 		// Handle API response
-		if (is_wp_error($response)) {
+		if ( is_wp_error( $response ) ) {
 			return new WP_REST_Response(
 				[
 					'success' => false,
@@ -222,8 +215,7 @@ class MultiChat_GPT
 	 * @param string $language Language code
 	 * @return array
 	 */
-	private function get_knowledge_base_chunks($language = 'en')
-	{
+	private function get_knowledge_base_chunks( $language = 'en' ) {
 		$kb_data = [
 			'en' => [
 				[
@@ -237,7 +229,7 @@ class MultiChat_GPT
 			],
 		];
 
-		return isset($kb_data[$language]) ? $kb_data[$language] : $kb_data['en'];
+		return isset( $kb_data[ $language ] ) ? $kb_data[ $language ] : $kb_data['en'];
 	}
 
 	/**
@@ -247,33 +239,32 @@ class MultiChat_GPT
 	 * @param array  $kb_chunks Knowledge base chunks
 	 * @return array Relevant chunks
 	 */
-	private function find_relevant_chunks($user_message, $kb_chunks)
-	{
-		if (! is_array($kb_chunks) || empty($kb_chunks)) {
+	private function find_relevant_chunks( $user_message, $kb_chunks ) {
+		if ( ! is_array( $kb_chunks ) || empty( $kb_chunks ) ) {
 			return [];
 		}
 
 		$relevant = [];
-		$user_words = array_filter(array_map('strtolower', preg_split('/\s+/', $user_message)));
+		$user_words = array_filter( array_map( 'strtolower', preg_split( '/\s+/', $user_message ) ) );
 
-		foreach ($kb_chunks as $chunk) {
-			$chunk_text = isset($chunk['content']) ? strtolower($chunk['content']) : '';
-			$chunk_text .= ' ' . (isset($chunk['title']) ? strtolower($chunk['title']) : '');
+		foreach ( $kb_chunks as $chunk ) {
+			$chunk_text = isset( $chunk['content'] ) ? strtolower( $chunk['content'] ) : '';
+			$chunk_text .= ' ' . ( isset( $chunk['title'] ) ? strtolower( $chunk['title'] ) : '' );
 
 			$match_count = 0;
-			foreach ($user_words as $word) {
-				if (strlen($word) > 3 && strpos($chunk_text, $word) !== false) {
+			foreach ( $user_words as $word ) {
+				if ( strlen( $word ) > 3 && strpos( $chunk_text, $word ) !== false ) {
 					$match_count++;
 				}
 			}
 
-			if ($match_count > 0) {
+			if ( $match_count > 0 ) {
 				$relevant[] = $chunk;
 			}
 		}
 
 		// Return top 3 most relevant chunks
-		return array_slice($relevant, 0, 3);
+		return array_slice( $relevant, 0, 3 );
 	}
 
 	/**
@@ -283,8 +274,7 @@ class MultiChat_GPT
 	 * @param array  $relevant_chunks Relevant KB chunks
 	 * @return string System message
 	 */
-	private function build_system_message($language, $relevant_chunks)
-	{
+	private function build_system_message( $language, $relevant_chunks ) {
 		$lang_names = [
 			'en' => 'English',
 			'ar' => 'Arabic',
@@ -292,15 +282,15 @@ class MultiChat_GPT
 			'fr' => 'French',
 		];
 
-		$lang_name = isset($lang_names[$language]) ? $lang_names[$language] : 'English';
+		$lang_name = isset( $lang_names[ $language ] ) ? $lang_names[ $language ] : 'English';
 
 		// Build KB content
 		$kb_content = '';
-		if (! empty($relevant_chunks)) {
+		if ( ! empty( $relevant_chunks ) ) {
 			$kb_content = "RELEVANT INFORMATION:\n";
-			foreach ($relevant_chunks as $chunk) {
-				$title   = isset($chunk['title']) ? $chunk['title'] : 'Info';
-				$content = isset($chunk['content']) ? substr($chunk['content'], 0, 500) : '';
+			foreach ( $relevant_chunks as $chunk ) {
+				$title   = isset( $chunk['title'] ) ? $chunk['title'] : 'Info';
+				$content = isset( $chunk['content'] ) ? substr( $chunk['content'], 0, 500 ) : '';
 				$kb_content .= "\n- $title: $content";
 			}
 		}
@@ -316,8 +306,7 @@ class MultiChat_GPT
 	 * @param string $user_message User's message
 	 * @return string|WP_Error
 	 */
-	private function call_chatgpt_api($api_key, $system_message, $user_message)
-	{
+	private function call_chatgpt_api( $api_key, $system_message, $user_message ) {
 		$request_body = [
 			'model'    => 'gpt-3.5-turbo',
 			'messages' => [
@@ -340,91 +329,112 @@ class MultiChat_GPT
 				'Authorization' => 'Bearer ' . $api_key,
 				'Content-Type'  => 'application/json',
 			],
-			'body'    => wp_json_encode($request_body),
+			'body'    => wp_json_encode( $request_body ),
 			'timeout' => 30,
 		];
 
-		$response = wp_remote_post($this->api_endpoint, $args);
+		$response = wp_remote_post( $this->api_endpoint, $args );
 
 		// Check for HTTP errors
-		if (is_wp_error($response)) {
+		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
 
 		// Get response body
-		$body = wp_remote_retrieve_body($response);
-		$data = json_decode($body, true);
+		$body = wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
 
 		// Check for API errors
-		if (isset($data['error'])) {
-			return new WP_Error('chatgpt_error', $data['error']['message'] ?? 'Unknown error');
+		if ( isset( $data['error'] ) ) {
+			return new WP_Error( 'chatgpt_error', $data['error']['message'] ?? 'Unknown error' );
 		}
 
 		// Extract assistant's message
-		if (isset($data['choices'][0]['message']['content'])) {
+		if ( isset( $data['choices'][0]['message']['content'] ) ) {
 			return $data['choices'][0]['message']['content'];
 		}
 
-		return new WP_Error('chatgpt_error', 'Unexpected response format from ChatGPT API');
+		return new WP_Error( 'chatgpt_error', 'Unexpected response format from ChatGPT API' );
 	}
 
 	/**
 	 * Handle sitemap scan AJAX request
 	 */
-	public function handle_scan_sitemap()
-	{
+	public function handle_scan_sitemap() {
 		// Check nonce
-		if (! isset($_POST['nonce']) || ! wp_verify_nonce($_POST['nonce'], 'multichat_scan_nonce')) {
-			wp_send_json_error('Invalid nonce');
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'multichat_scan_nonce' ) ) {
+			wp_send_json_error( 'Invalid nonce' );
 		}
 
 		// Check capabilities
-		if (! current_user_can('manage_options')) {
-			wp_send_json_error('Insufficient permissions');
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
 		}
 
 		// Get sitemap URL
-		$sitemap_url = isset($_POST['sitemap_url']) ? esc_url_raw($_POST['sitemap_url']) : site_url('/sitemap.xml');
+		$sitemap_url = isset( $_POST['sitemap_url'] ) ? esc_url_raw( $_POST['sitemap_url'] ) : site_url( '/sitemap.xml' );
 
-		if (empty($sitemap_url)) {
-			wp_send_json_error('Invalid sitemap URL');
+		if ( empty( $sitemap_url ) ) {
+			wp_send_json_error( 'Invalid sitemap URL' );
 		}
 
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-sitemap-scanner.php';
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
 
 		// Check if external sitemap
-		$external = strpos($sitemap_url, home_url()) === false;
+		$external = strpos( $sitemap_url, home_url() ) === false;
 
 		// Scan sitemap
-		$urls = MultiChat_Sitemap_Scanner::get_urls_from_sitemap($sitemap_url, $external);
+		$urls = MultiChat_Sitemap_Scanner::get_urls_from_sitemap( $sitemap_url, $external );
 
-		if (empty($urls)) {
-			error_log('MultiChat GPT: No URLs found in sitemap: ' . $sitemap_url);
-			wp_send_json_error('No pages found in sitemap. Check your sitemap URL.');
+		if ( empty( $urls ) ) {
+			error_log( 'MultiChat GPT: No URLs found in sitemap: ' . $sitemap_url );
+			wp_send_json_error( 'No pages found in sitemap. Check your sitemap URL.' );
 		}
 
 		// Build knowledge base (this clears old cache first)
-		$kb = MultiChat_KB_Builder::build_kb_from_urls($urls);
+		$kb = MultiChat_KB_Builder::build_kb_from_urls( $urls );
 
-		if (empty($kb)) {
-			wp_send_json_error('Failed to extract content from pages. Check error logs.');
+		if ( empty( $kb ) ) {
+			wp_send_json_error( 'Failed to extract content from pages. Check error logs.' );
 		}
 
-		wp_send_json_success([
-			'message'        => sprintf('Successfully scanned and indexed %d pages', count($kb)),
-			'pages_scanned'  => count($kb),
-			'cache_expires'  => gmdate('Y-m-d H:i:s', time() + 7 * DAY_IN_SECONDS),
-		]);
+		wp_send_json_success( [
+			'message'        => sprintf( 'Successfully scanned and indexed %d pages', count( $kb ) ),
+			'pages_scanned'  => count( $kb ),
+		] );
+	}
+
+	/**
+	 * Handle clear cache AJAX request
+	 */
+	public function handle_clear_cache() {
+		// Check nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'multichat_clear_nonce' ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
+
+		// Clear the cache
+		MultiChat_KB_Builder::clear_cache();
+
+		wp_send_json_success( [
+			'message' => __( 'Knowledge base cleared successfully. Reverting to default responses.', 'multichat-gpt' ),
+		] );
 	}
 
 	/**
 	 * Enqueue frontend assets
 	 */
-	public function enqueue_frontend_assets()
-	{
+	public function enqueue_frontend_assets() {
 		// Only enqueue on frontend, not admin
-		if (is_admin()) {
+		if ( is_admin() ) {
 			return;
 		}
 
@@ -452,7 +462,7 @@ class MultiChat_GPT
 			'multichat-gpt-widget',
 			'multiChatGPT',
 			[
-				'restUrl'  => esc_url(rest_url('multichat/v1/ask')),
+				'restUrl'  => esc_url( rest_url( 'multichat/v1/ask' ) ),
 				'language' => $current_language,
 			]
 		);
@@ -463,11 +473,10 @@ class MultiChat_GPT
 	 *
 	 * @return string Language code
 	 */
-	private function get_current_language()
-	{
+	private function get_current_language() {
 		// Check for WPML
-		if (function_exists('wpml_get_default_language')) {
-			return apply_filters('wpml_current_language', null);
+		if ( function_exists( 'wpml_get_default_language' ) ) {
+			return apply_filters( 'wpml_current_language', null );
 		}
 
 		return 'en';
@@ -476,53 +485,51 @@ class MultiChat_GPT
 	/**
 	 * Add admin menu
 	 */
-	public function add_admin_menu()
-	{
+	public function add_admin_menu() {
 		add_options_page(
-			__('MultiChat GPT', 'multichat-gpt'),
-			__('MultiChat GPT', 'multichat-gpt'),
+			__( 'MultiChat GPT', 'multichat-gpt' ),
+			__( 'MultiChat GPT', 'multichat-gpt' ),
 			'manage_options',
 			'multichat-gpt',
-			[$this, 'render_admin_page']
+			[ $this, 'render_admin_page' ]
 		);
 	}
 
 	/**
 	 * Register admin settings
 	 */
-	public function register_admin_settings()
-	{
-		register_setting('multichat_gpt_group', 'multichat_gpt_api_key');
-		register_setting('multichat_gpt_group', 'multichat_gpt_widget_position');
-		register_setting('multichat_gpt_group', 'multichat_gpt_sitemap_url');
+	public function register_admin_settings() {
+		register_setting( 'multichat_gpt_group', 'multichat_gpt_api_key' );
+		register_setting( 'multichat_gpt_group', 'multichat_gpt_widget_position' );
+		register_setting( 'multichat_gpt_group', 'multichat_gpt_sitemap_url' );
 
 		add_settings_section(
 			'multichat_gpt_section',
-			__('Configuration', 'multichat-gpt'),
-			[$this, 'render_settings_section'],
+			__( 'Configuration', 'multichat-gpt' ),
+			[ $this, 'render_settings_section' ],
 			'multichat-gpt-settings'
 		);
 
 		add_settings_field(
 			'multichat_gpt_api_key',
-			__('OpenAI API Key', 'multichat-gpt'),
-			[$this, 'render_api_key_field'],
+			__( 'OpenAI API Key', 'multichat-gpt' ),
+			[ $this, 'render_api_key_field' ],
 			'multichat-gpt-settings',
 			'multichat_gpt_section'
 		);
 
 		add_settings_field(
 			'multichat_gpt_widget_position',
-			__('Widget Position', 'multichat-gpt'),
-			[$this, 'render_position_field'],
+			__( 'Widget Position', 'multichat-gpt' ),
+			[ $this, 'render_position_field' ],
 			'multichat-gpt-settings',
 			'multichat_gpt_section'
 		);
 
 		add_settings_field(
 			'multichat_gpt_sitemap_url',
-			__('Sitemap URL', 'multichat-gpt'),
-			[$this, 'render_sitemap_url_field'],
+			__( 'Sitemap URL', 'multichat-gpt' ),
+			[ $this, 'render_sitemap_url_field' ],
 			'multichat-gpt-settings',
 			'multichat_gpt_section'
 		);
@@ -531,109 +538,141 @@ class MultiChat_GPT
 	/**
 	 * Render settings section
 	 */
-	public function render_settings_section()
-	{
-?>
-		<p><?php esc_html_e('Configure your MultiChat GPT plugin settings below.', 'multichat-gpt'); ?></p>
-	<?php
+	public function render_settings_section() {
+		?>
+		<p><?php esc_html_e( 'Configure your MultiChat GPT plugin settings below.', 'multichat-gpt' ); ?></p>
+		<?php
 	}
 
 	/**
 	 * Render API key field
 	 */
-	public function render_api_key_field()
-	{
-		$api_key = get_option('multichat_gpt_api_key');
-	?>
-		<input
-			type="password"
-			name="multichat_gpt_api_key"
-			value="<?php echo esc_attr($api_key); ?>"
-			style="width: 400px;" />
-	<?php
+	public function render_api_key_field() {
+		$api_key = get_option( 'multichat_gpt_api_key' );
+		?>
+		<input 
+			type="password" 
+			name="multichat_gpt_api_key" 
+			value="<?php echo esc_attr( $api_key ); ?>" 
+			style="width: 400px;"
+		/>
+		<?php
 	}
 
 	/**
 	 * Render position field
 	 */
-	public function render_position_field()
-	{
-		$position = get_option('multichat_gpt_widget_position', 'bottom-right');
-	?>
+	public function render_position_field() {
+		$position = get_option( 'multichat_gpt_widget_position', 'bottom-right' );
+		?>
 		<select name="multichat_gpt_widget_position">
-			<option value="bottom-right" <?php selected($position, 'bottom-right'); ?>>
-				<?php esc_html_e('Bottom Right', 'multichat-gpt'); ?>
+			<option value="bottom-right" <?php selected( $position, 'bottom-right' ); ?>>
+				<?php esc_html_e( 'Bottom Right', 'multichat-gpt' ); ?>
 			</option>
-			<option value="bottom-left" <?php selected($position, 'bottom-left'); ?>>
-				<?php esc_html_e('Bottom Left', 'multichat-gpt'); ?>
+			<option value="bottom-left" <?php selected( $position, 'bottom-left' ); ?>>
+				<?php esc_html_e( 'Bottom Left', 'multichat-gpt' ); ?>
 			</option>
 		</select>
-	<?php
+		<?php
 	}
 
 	/**
 	 * Render sitemap URL field
 	 */
-	public function render_sitemap_url_field()
-	{
-		$sitemap_url = get_option('multichat_gpt_sitemap_url', site_url('/sitemap.xml'));
-	?>
-		<input
-			type="url"
-			name="multichat_gpt_sitemap_url"
-			value="<?php echo esc_attr($sitemap_url); ?>"
-			style="width: 400px;" />
+	public function render_sitemap_url_field() {
+		$sitemap_url = get_option( 'multichat_gpt_sitemap_url', site_url( '/sitemap.xml' ) );
+		?>
+		<input 
+			type="url" 
+			name="multichat_gpt_sitemap_url" 
+			value="<?php echo esc_attr( $sitemap_url ); ?>" 
+			style="width: 400px;"
+		/>
 		<p class="description">
-			<?php esc_html_e('Leave blank to use default sitemap location', 'multichat-gpt'); ?>
+			<?php esc_html_e( 'Leave blank to use default sitemap location', 'multichat-gpt' ); ?>
 		</p>
-	<?php
+		<?php
 	}
 
 	/**
 	 * Render admin page
 	 */
-	public function render_admin_page()
-	{
-		if (! current_user_can('manage_options')) {
-			wp_die(esc_html__('You do not have permission to access this page.', 'multichat-gpt'));
+	public function render_admin_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'multichat-gpt' ) );
 		}
 
-		$sitemap_url = get_option('multichat_gpt_sitemap_url', site_url('/sitemap.xml'));
+		$sitemap_url = get_option( 'multichat_gpt_sitemap_url', site_url( '/sitemap.xml' ) );
 		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
-		$cache_expires = MultiChat_KB_Builder::get_cache_expiration();
-	?>
+		
+		$kb_stats = MultiChat_KB_Builder::get_kb_stats();
+		$is_cached = MultiChat_KB_Builder::is_kb_cached();
+		?>
 		<div class="wrap">
-			<h1><?php esc_html_e('MultiChat GPT Settings', 'multichat-gpt'); ?></h1>
+			<h1><?php esc_html_e( 'MultiChat GPT Settings', 'multichat-gpt' ); ?></h1>
 
-			<div class="notice notice-info" style="margin-top: 20px;">
-				<p>
-					<strong><?php esc_html_e('Knowledge Base Status:', 'multichat-gpt'); ?></strong>
-					<?php
-					if ($cache_expires > 0) {
-						echo sprintf(
-							esc_html__('Cache will expire in %s', 'multichat-gpt'),
-							gmdate('H:i:s', $cache_expires)
-						);
-					} else {
-						esc_html_e('No knowledge base cached yet', 'multichat-gpt');
-					}
-					?>
-				</p>
+			<!-- KB Status Card -->
+			<div class="notice notice-info" style="margin-top: 20px; padding: 20px; border-left: 4px solid #2563eb;">
+				<h3><?php esc_html_e( 'Knowledge Base Status', 'multichat-gpt' ); ?></h3>
+				<table style="width: 100%; margin-top: 10px;">
+					<tr>
+						<td style="padding: 8px;"><strong><?php esc_html_e( 'Pages Indexed:', 'multichat-gpt' ); ?></strong></td>
+						<td style="padding: 8px;"><span style="font-size: 18px; color: #2563eb; font-weight: bold;"><?php echo intval( $kb_stats['pages_indexed'] ); ?></span></td>
+					</tr>
+					<tr>
+						<td style="padding: 8px;"><strong><?php esc_html_e( 'Cache Status:', 'multichat-gpt' ); ?></strong></td>
+						<td style="padding: 8px;">
+							<?php 
+							if ( $is_cached ) {
+								echo '<span style="color: #22c55e; font-weight: bold;">✓ ' . esc_html__( 'Active (Permanent)', 'multichat-gpt' ) . '</span>';
+							} else {
+								echo '<span style="color: #f59e0b; font-weight: bold;">⚠ ' . esc_html__( 'No cache', 'multichat-gpt' ) . '</span>';
+							}
+							?>
+						</td>
+					</tr>
+					<tr>
+						<td style="padding: 8px;"><strong><?php esc_html_e( 'Last Scanned:', 'multichat-gpt' ); ?></strong></td>
+						<td style="padding: 8px;"><?php echo esc_html( $kb_stats['last_scanned'] ); ?></td>
+					</tr>
+					<tr>
+						<td style="padding: 8px;"><strong><?php esc_html_e( 'Expires:', 'multichat-gpt' ); ?></strong></td>
+						<td style="padding: 8px;">
+							<span style="color: #22c55e; font-weight: bold;">
+								<?php esc_html_e( 'Never (until manually rescanned)', 'multichat-gpt' ); ?>
+							</span>
+						</td>
+					</tr>
+				</table>
 			</div>
 
+			<!-- Scan Button -->
 			<div style="background: #f1f1f1; padding: 20px; margin: 20px 0; border-left: 4px solid #2563eb;">
-				<h3><?php esc_html_e('Scan Website Sitemap', 'multichat-gpt'); ?></h3>
-				<p><?php esc_html_e('Click the button below to scan your website sitemap and build the knowledge base.', 'multichat-gpt'); ?></p>
+				<h3><?php esc_html_e( 'Scan Website Sitemap', 'multichat-gpt' ); ?></h3>
+				<p><?php esc_html_e( 'Click the button below to scan your website sitemap and build/update the knowledge base. The cache will remain permanent until you scan again.', 'multichat-gpt' ); ?></p>
 				<button id="multichat-scan-btn" class="button button-primary" style="padding: 10px 20px; font-size: 14px;">
-					<?php esc_html_e('Scan Sitemap Now', 'multichat-gpt'); ?>
+					<?php esc_html_e( 'Scan Sitemap Now', 'multichat-gpt' ); ?>
 				</button>
 				<span id="multichat-scan-status" style="margin-left: 10px; display: none;"></span>
 			</div>
 
+			<!-- Clear Cache Option -->
+			<?php if ( $is_cached ) { ?>
+				<div style="background: #fff3cd; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107;">
+					<h3><?php esc_html_e( 'Clear Knowledge Base', 'multichat-gpt' ); ?></h3>
+					<p><?php esc_html_e( 'If you want to remove the cached knowledge base and revert to default responses, click below.', 'multichat-gpt' ); ?></p>
+					<button id="multichat-clear-btn" class="button button-secondary" style="padding: 10px 20px; font-size: 14px; color: #d32f2f; border-color: #d32f2f;">
+						<?php esc_html_e( 'Clear Cache', 'multichat-gpt' ); ?>
+					</button>
+					<span id="multichat-clear-status" style="margin-left: 10px; display: none;"></span>
+				</div>
+			<?php } ?>
+
+			<!-- Settings Form -->
 			<form method="POST" action="options.php">
 				<?php
-				settings_fields('multichat_gpt_group');
-				do_settings_sections('multichat-gpt-settings');
+				settings_fields( 'multichat_gpt_group' );
+				do_settings_sections( 'multichat-gpt-settings' );
 				submit_button();
 				?>
 			</form>
@@ -641,30 +680,78 @@ class MultiChat_GPT
 
 		<script>
 			jQuery(document).ready(function($) {
+				// Scan sitemap button
 				$('#multichat-scan-btn').on('click', function() {
 					var $btn = $(this);
 					var $status = $('#multichat-scan-status');
 
 					$btn.prop('disabled', true);
-					$status.show().text('<?php echo esc_js(__('Scanning...', 'multichat-gpt')); ?>');
+					$status.show().text('<?php echo esc_js( __( 'Scanning...', 'multichat-gpt' ) ); ?>');
 
 					$.ajax({
 						url: ajaxurl,
 						method: 'POST',
 						data: {
 							action: 'multichat_scan_sitemap',
-							nonce: '<?php echo wp_create_nonce('multichat_scan_nonce'); ?>',
-							sitemap_url: '<?php echo esc_js($sitemap_url); ?>'
+							nonce: '<?php echo wp_create_nonce( 'multichat_scan_nonce' ); ?>',
+							sitemap_url: '<?php echo esc_js( $sitemap_url ); ?>'
 						},
 						success: function(response) {
 							if (response.success) {
-								$status.addClass('notice notice-success').text(response.data.message + ' - Cache expires: ' + response.data.cache_expires);
+								$status.addClass('notice notice-success').html(
+									'✓ ' + response.data.message + '<br/>' +
+									'<?php echo esc_js( __( 'Knowledge base is now permanent until next manual scan.', 'multichat-gpt' ) ); ?>'
+								);
+								// Reload page after 2 seconds to show updated stats
+								setTimeout(function() {
+									location.reload();
+								}, 2000);
 							} else {
 								$status.addClass('notice notice-error').text('Error: ' + response.data);
 							}
 						},
 						error: function() {
-							$status.addClass('notice notice-error').text('<?php echo esc_js(__('Error scanning sitemap', 'multichat-gpt')); ?>');
+							$status.addClass('notice notice-error').text('<?php echo esc_js( __( 'Error scanning sitemap', 'multichat-gpt' ) ); ?>');
+						},
+						complete: function() {
+							$btn.prop('disabled', false);
+						}
+					});
+				});
+
+				// Clear cache button
+				$('#multichat-clear-btn').on('click', function(e) {
+					e.preventDefault();
+					
+					if (!confirm('<?php echo esc_js( __( 'Are you sure you want to clear the knowledge base? This will revert to default responses.', 'multichat-gpt' ) ); ?>')) {
+						return;
+					}
+
+					var $btn = $(this);
+					var $status = $('#multichat-clear-status');
+
+					$btn.prop('disabled', true);
+					$status.show().text('<?php echo esc_js( __( 'Clearing...', 'multichat-gpt' ) ); ?>');
+
+					$.ajax({
+						url: ajaxurl,
+						method: 'POST',
+						data: {
+							action: 'multichat_clear_cache',
+							nonce: '<?php echo wp_create_nonce( 'multichat_clear_nonce' ); ?>'
+						},
+						success: function(response) {
+							if (response.success) {
+								$status.addClass('notice notice-success').text('✓ ' + response.data.message);
+								setTimeout(function() {
+									location.reload();
+								}, 2000);
+							} else {
+								$status.addClass('notice notice-error').text('Error: ' + response.data);
+							}
+						},
+						error: function() {
+							$status.addClass('notice notice-error').text('<?php echo esc_js( __( 'Error clearing cache', 'multichat-gpt' ) ); ?>');
 						},
 						complete: function() {
 							$btn.prop('disabled', false);
@@ -673,23 +760,22 @@ class MultiChat_GPT
 				});
 			});
 		</script>
-<?php
+		<?php
 	}
 
 	/**
 	 * Activate plugin
 	 */
-	public static function activate_plugin()
-	{
+	public static function activate_plugin() {
 		// Create necessary options
-		if (! get_option('multichat_gpt_api_key')) {
-			add_option('multichat_gpt_api_key', '');
+		if ( ! get_option( 'multichat_gpt_api_key' ) ) {
+			add_option( 'multichat_gpt_api_key', '' );
 		}
-		if (! get_option('multichat_gpt_widget_position')) {
-			add_option('multichat_gpt_widget_position', 'bottom-right');
+		if ( ! get_option( 'multichat_gpt_widget_position' ) ) {
+			add_option( 'multichat_gpt_widget_position', 'bottom-right' );
 		}
-		if (! get_option('multichat_gpt_sitemap_url')) {
-			add_option('multichat_gpt_sitemap_url', site_url('/sitemap.xml'));
+		if ( ! get_option( 'multichat_gpt_sitemap_url' ) ) {
+			add_option( 'multichat_gpt_sitemap_url', site_url( '/sitemap.xml' ) );
 		}
 
 		flush_rewrite_rules();
@@ -698,8 +784,7 @@ class MultiChat_GPT
 	/**
 	 * Deactivate plugin
 	 */
-	public static function deactivate_plugin()
-	{
+	public static function deactivate_plugin() {
 		// Clean up if needed
 		flush_rewrite_rules();
 	}

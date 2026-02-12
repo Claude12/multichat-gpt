@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MultiChat_KB_Builder {
 
 	const KB_CACHE_KEY = 'multichat_gpt_knowledge_base';
-	const KB_CACHE_TIME = 7 * DAY_IN_SECONDS; // 7 days
+	const KB_META_KEY = '_multichat_gpt_kb_timestamp'; // Store timestamp as option
 
 	/**
 	 * Build knowledge base from URLs
@@ -57,7 +57,7 @@ class MultiChat_KB_Builder {
 			}
 		}
 
-		// Cache the KB
+		// Store the KB permanently (no expiration)
 		if ( ! empty( $kb_chunks ) ) {
 			self::cache_knowledge_base( $kb_chunks );
 		}
@@ -88,22 +88,38 @@ class MultiChat_KB_Builder {
 	}
 
 	/**
-	 * Cache knowledge base
+	 * Cache knowledge base permanently (no expiration)
+	 * Uses option instead of transient to avoid auto-expiration
 	 *
 	 * @param array $kb Knowledge base chunks
 	 * @return bool
 	 */
 	public static function cache_knowledge_base( $kb ) {
-		return set_transient( self::KB_CACHE_KEY, $kb, self::KB_CACHE_TIME );
+		// Store KB as option (permanent until manually cleared)
+		$result = update_option( self::KB_CACHE_KEY, $kb );
+		
+		// Store timestamp of when it was cached
+		update_option( self::KB_META_KEY, current_time( 'mysql' ) );
+		
+		return $result;
 	}
 
 	/**
-	 * Get cached knowledge base
+	 * Get cached knowledge base (never expires)
 	 *
 	 * @return array|false
 	 */
 	public static function get_cached_knowledge_base() {
-		return get_transient( self::KB_CACHE_KEY );
+		return get_option( self::KB_CACHE_KEY, false );
+	}
+
+	/**
+	 * Check if KB is cached
+	 *
+	 * @return bool
+	 */
+	public static function is_kb_cached() {
+		return get_option( self::KB_CACHE_KEY, false ) !== false;
 	}
 
 	/**
@@ -112,22 +128,18 @@ class MultiChat_KB_Builder {
 	 * @return bool
 	 */
 	public static function clear_cache() {
-		return delete_transient( self::KB_CACHE_KEY );
+		delete_option( self::KB_CACHE_KEY );
+		delete_option( self::KB_META_KEY );
+		return true;
 	}
 
 	/**
-	 * Get KB cache expiration time
+	 * Get KB cache timestamp
 	 *
-	 * @return int Seconds until cache expires
+	 * @return string|false Timestamp when KB was last cached
 	 */
-	public static function get_cache_expiration() {
-		$time = get_option( '_transient_timeout_' . self::KB_CACHE_KEY );
-		if ( ! $time ) {
-			return 0;
-		}
-
-		$expires_in = $time - time();
-		return max( 0, $expires_in );
+	public static function get_cache_timestamp() {
+		return get_option( self::KB_META_KEY, false );
 	}
 
 	/**
@@ -142,14 +154,18 @@ class MultiChat_KB_Builder {
 			return [
 				'pages_indexed' => 0,
 				'cache_status'  => 'No cache',
-				'expires_in'    => 0,
+				'last_scanned'  => 'Never',
+				'expires'       => 'Never (permanent)',
 			];
 		}
 
+		$timestamp = self::get_cache_timestamp();
+		
 		return [
 			'pages_indexed' => count( $kb ),
 			'cache_status'  => 'Active',
-			'expires_in'    => self::get_cache_expiration(),
+			'last_scanned'  => $timestamp ? gmdate( 'Y-m-d H:i:s', strtotime( $timestamp ) ) : 'Unknown',
+			'expires'       => 'Never (permanent)',
 		];
 	}
 }
