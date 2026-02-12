@@ -3,7 +3,7 @@
  * Plugin Name: MultiChat GPT
  * Plugin URI: https://example.com/multichat-gpt
  * Description: ChatGPT-powered multilingual chat widget for WordPress Multisite + WPML
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Define plugin constants
  */
-define( 'MULTICHAT_GPT_VERSION', '1.2.0' );
+define( 'MULTICHAT_GPT_VERSION', '1.2.1' );
 define( 'MULTICHAT_GPT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MULTICHAT_GPT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MULTICHAT_GPT_BASENAME', plugin_basename( __FILE__ ) );
@@ -122,6 +122,7 @@ class MultiChat_GPT {
 	 * Register REST API endpoints
 	 */
 	public function register_rest_endpoints() {
+		// Chat endpoint
 		register_rest_route(
 			'multichat/v1',
 			'/ask',
@@ -134,6 +135,24 @@ class MultiChat_GPT {
 						'type'     => 'string',
 						'required' => true,
 					],
+					'language' => [
+						'type'     => 'string',
+						'required' => false,
+						'default'  => 'en',
+					],
+				],
+			]
+		);
+
+		// Public FAQ endpoint for frontend chat
+		register_rest_route(
+			'multichat/v1',
+			'/faqs',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ $this, 'handle_rest_get_faqs' ],
+				'permission_callback' => '__return_true',
+				'args'                => [
 					'language' => [
 						'type'     => 'string',
 						'required' => false,
@@ -634,7 +653,19 @@ class MultiChat_GPT {
 	}
 
 	/**
-	 * Handle get FAQs AJAX
+	 * Handle get FAQs via REST API (PUBLIC - for frontend)
+	 */
+	public function handle_rest_get_faqs( $request ) {
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-faq-manager.php';
+
+		$language = sanitize_key( $request->get_param( 'language' ) ?: 'en' );
+		$faqs     = MultiChat_FAQ_Manager::get_language_faqs( $language );
+
+		return new WP_REST_Response( $faqs );
+	}
+
+	/**
+	 * Handle get FAQs AJAX (ADMIN ONLY - for admin panel)
 	 */
 	public function handle_get_faqs() {
 		if ( ! current_user_can( 'manage_options' ) ) {
