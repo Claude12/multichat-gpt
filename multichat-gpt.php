@@ -52,6 +52,27 @@ class MultiChat_GPT {
 	private $api_endpoint = 'https://api.openai.com/v1/chat/completions';
 
 	/**
+	 * Sitemap Scanner instance
+	 *
+	 * @var MultiChat_Sitemap_Scanner
+	 */
+	private $sitemap_scanner;
+
+	/**
+	 * Content Crawler instance
+	 *
+	 * @var MultiChat_Content_Crawler
+	 */
+	private $content_crawler;
+
+	/**
+	 * KB Builder instance
+	 *
+	 * @var MultiChat_KB_Builder
+	 */
+	private $kb_builder;
+
+	/**
 	 * Get instance of the class
 	 *
 	 * @return self
@@ -67,6 +88,14 @@ class MultiChat_GPT {
 	 * Constructor
 	 */
 	public function __construct() {
+		// Load dependencies
+		$this->load_dependencies();
+
+		// Initialize class instances
+		$this->sitemap_scanner = new MultiChat_Sitemap_Scanner();
+		$this->content_crawler = new MultiChat_Content_Crawler();
+		$this->kb_builder      = new MultiChat_KB_Builder();
+
 		// Load text domain for translations
 		add_action( 'plugins_loaded', [ $this, 'load_textdomain' ] );
 
@@ -80,9 +109,25 @@ class MultiChat_GPT {
 		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
 		add_action( 'admin_init', [ $this, 'register_admin_settings' ] );
 
+		// Enqueue admin assets
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
+
+		// AJAX handlers
+		add_action( 'wp_ajax_multichat_scan_sitemap', [ $this, 'ajax_scan_sitemap' ] );
+		add_action( 'wp_ajax_multichat_clear_kb_cache', [ $this, 'ajax_clear_kb_cache' ] );
+
 		// Activation/Deactivation hooks
 		register_activation_hook( __FILE__, [ $this, 'activate_plugin' ] );
 		register_deactivation_hook( __FILE__, [ $this, 'deactivate_plugin' ] );
+	}
+
+	/**
+	 * Load plugin dependencies
+	 */
+	private function load_dependencies() {
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-sitemap-scanner.php';
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-content-crawler.php';
+		require_once MULTICHAT_GPT_PLUGIN_DIR . 'includes/class-kb-builder.php';
 	}
 
 	/**
@@ -121,6 +166,37 @@ class MultiChat_GPT {
 				],
 			]
 		);
+
+		register_rest_route(
+			'multichat/v1',
+			'/scan-sitemap',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ $this, 'handle_scan_sitemap' ],
+				'permission_callback' => [ $this, 'check_admin_permission' ],
+				'args'                => [
+					'force_refresh' => [
+						'type'     => 'boolean',
+						'required' => false,
+						'default'  => false,
+					],
+					'post_types' => [
+						'type'     => 'array',
+						'required' => false,
+						'default'  => [ 'page' ],
+					],
+				],
+			]
+		);
+	}
+
+	/**
+	 * Check if user has admin permission
+	 *
+	 * @return bool
+	 */
+	public function check_admin_permission() {
+		return current_user_can( 'manage_options' );
 	}
 
 	/**
@@ -194,11 +270,25 @@ class MultiChat_GPT {
 	 * @return array
 	 */
 	private function get_knowledge_base_chunks( $language = 'en' ) {
-		/**
-		 * Hard-coded knowledge base
-		 * LATER: Replace with ACF fields or database query
-		 */
+		// Try to get knowledge base from dynamic KB builder first
+		$kb_chunks = $this->kb_builder->get_chunks( $language );
 
+		if ( ! empty( $kb_chunks ) ) {
+			// Convert KB chunks to simple text array for backward compatibility
+			$text_chunks = [];
+			foreach ( $kb_chunks as $chunk ) {
+				if ( isset( $chunk['text'] ) ) {
+					$text_chunks[] = $chunk['text'];
+				}
+			}
+			return $text_chunks;
+		}
+
+		// Fallback to static knowledge base if dynamic KB is empty
+		/**
+		 * Hard-coded knowledge base (FALLBACK)
+		 * This is used only when dynamic KB is not available
+		 */
 		$kb_data = [
 			'en' => [
 				'What are your business hours?',
@@ -272,7 +362,7 @@ class MultiChat_GPT {
 	 * @param int $num_results Number of results to return
 	 * @return array
 	 */
-	private function find_relevant_chunks( $user_message, $kb_chunks, $num_results = 3 ) {
+	private function find_relevant_chunks( $user_message, $kb_chunks, $num_results = 5 ) {
 		$similarities = [];
 
 		// Calculate similarity between user message and each KB chunk
@@ -410,6 +500,45 @@ class MultiChat_GPT {
 	}
 
 	/**
+	 * Enqueue admin assets
+	 *
+	 * @param string $hook Current admin page hook
+	 */
+	public function enqueue_admin_assets( $hook ) {
+		// Only load on our settings page
+		if ( 'settings_page_multichat-gpt-settings' !== $hook ) {
+			return;
+		}
+
+		// Enqueue admin KB CSS
+		wp_enqueue_style(
+			'multichat-gpt-admin-kb',
+			MULTICHAT_GPT_PLUGIN_URL . 'assets/css/admin-kb.css',
+			[],
+			MULTICHAT_GPT_VERSION
+		);
+
+		// Enqueue admin KB JS
+		wp_enqueue_script(
+			'multichat-gpt-admin-kb',
+			MULTICHAT_GPT_PLUGIN_URL . 'assets/js/admin-kb.js',
+			[ 'jquery' ],
+			MULTICHAT_GPT_VERSION,
+			true
+		);
+
+		// Localize script with AJAX data
+		wp_localize_script(
+			'multichat-gpt-admin-kb',
+			'multiChatKB',
+			[
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'multichat_kb_nonce' ),
+			]
+		);
+	}
+
+	/**
 	 * Get current language (WPML-aware)
 	 *
 	 * @return string
@@ -471,6 +600,28 @@ class MultiChat_GPT {
 			]
 		);
 
+		register_setting(
+			'multichat_gpt_group',
+			'multichat_gpt_sitemap_url',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => 'esc_url_raw',
+				'default'           => '',
+				'show_in_rest'      => false,
+			]
+		);
+
+		register_setting(
+			'multichat_gpt_group',
+			'multichat_gpt_kb_cache_duration',
+			[
+				'type'              => 'integer',
+				'sanitize_callback' => 'absint',
+				'default'           => 604800, // 7 days
+				'show_in_rest'      => false,
+			]
+		);
+
 		add_settings_section(
 			'multichat_gpt_section',
 			__( 'ChatGPT Configuration', 'multichat-gpt' ),
@@ -490,6 +641,22 @@ class MultiChat_GPT {
 			'multichat_gpt_widget_position',
 			__( 'Widget Position', 'multichat-gpt' ),
 			[ $this, 'render_position_field' ],
+			'multichat-gpt-settings',
+			'multichat_gpt_section'
+		);
+
+		add_settings_field(
+			'multichat_gpt_sitemap_url',
+			__( 'Sitemap URL', 'multichat-gpt' ),
+			[ $this, 'render_sitemap_url_field' ],
+			'multichat-gpt-settings',
+			'multichat_gpt_section'
+		);
+
+		add_settings_field(
+			'multichat_gpt_kb_cache_duration',
+			__( 'Cache Duration (seconds)', 'multichat-gpt' ),
+			[ $this, 'render_cache_duration_field' ],
 			'multichat-gpt-settings',
 			'multichat_gpt_section'
 		);
@@ -529,6 +696,24 @@ class MultiChat_GPT {
 	}
 
 	/**
+	 * Render sitemap URL field
+	 */
+	public function render_sitemap_url_field() {
+		$sitemap_url = get_option( 'multichat_gpt_sitemap_url', '' );
+		echo '<input type="url" id="multichat_gpt_sitemap_url" name="multichat_gpt_sitemap_url" value="' . esc_attr( $sitemap_url ) . '" class="regular-text" />';
+		echo '<p class="description">' . esc_html__( 'Enter your website sitemap URL (e.g., https://example.com/sitemap_index.xml)', 'multichat-gpt' ) . '</p>';
+	}
+
+	/**
+	 * Render cache duration field
+	 */
+	public function render_cache_duration_field() {
+		$duration = get_option( 'multichat_gpt_kb_cache_duration', 604800 );
+		echo '<input type="number" name="multichat_gpt_kb_cache_duration" value="' . esc_attr( $duration ) . '" class="small-text" min="3600" />';
+		echo '<p class="description">' . esc_html__( 'How long to cache the knowledge base (default: 604800 = 7 days)', 'multichat-gpt' ) . '</p>';
+	}
+
+	/**
 	 * Render admin page
 	 */
 	public function render_admin_page() {
@@ -545,8 +730,215 @@ class MultiChat_GPT {
 				submit_button();
 				?>
 			</form>
+
+			<!-- Knowledge Base Management Section -->
+			<div class="multichat-kb-section">
+				<h2><?php esc_html_e( 'Knowledge Base Management', 'multichat-gpt' ); ?></h2>
+
+				<div class="multichat-kb-help">
+					<p>
+						<strong><?php esc_html_e( 'How it works:', 'multichat-gpt' ); ?></strong>
+						<?php esc_html_e( 'The chatbot can automatically scan your website sitemap and build a knowledge base from your page content.', 'multichat-gpt' ); ?>
+					</p>
+					<p>
+						<?php esc_html_e( '1. Enter your sitemap URL above (e.g., https://example.com/sitemap_index.xml)', 'multichat-gpt' ); ?>
+					</p>
+					<p>
+						<?php esc_html_e( '2. Click "Save Changes" to save your settings', 'multichat-gpt' ); ?>
+					</p>
+					<p>
+						<?php esc_html_e( '3. Click "Scan Sitemap Now" below to start building the knowledge base', 'multichat-gpt' ); ?>
+					</p>
+				</div>
+
+				<div id="multichat-kb-status" style="display: none;"></div>
+				<div id="multichat-kb-progress" style="display: none;"></div>
+
+				<div class="multichat-kb-buttons">
+					<button type="button" id="multichat-scan-sitemap" class="button button-primary">
+						<?php esc_html_e( 'Scan Sitemap Now', 'multichat-gpt' ); ?>
+					</button>
+					<button type="button" id="multichat-clear-cache" class="button button-secondary">
+						<?php esc_html_e( 'Clear Cache', 'multichat-gpt' ); ?>
+					</button>
+				</div>
+
+				<div id="multichat-kb-metadata">
+					<?php
+					$metadata = $this->kb_builder->get_metadata();
+					if ( ! empty( $metadata ) ) {
+						?>
+						<table class="widefat">
+							<tbody>
+								<tr>
+									<th><?php esc_html_e( 'Total Pages Indexed:', 'multichat-gpt' ); ?></th>
+									<td><?php echo esc_html( $metadata['total_pages'] ?? 0 ); ?></td>
+								</tr>
+								<tr>
+									<th><?php esc_html_e( 'Total Knowledge Chunks:', 'multichat-gpt' ); ?></th>
+									<td><?php echo esc_html( $metadata['total_chunks'] ?? 0 ); ?></td>
+								</tr>
+								<tr>
+									<th><?php esc_html_e( 'Last Updated:', 'multichat-gpt' ); ?></th>
+									<td><?php echo esc_html( $metadata['last_updated'] ?? __( 'Never', 'multichat-gpt' ) ); ?></td>
+								</tr>
+								<tr>
+									<th><?php esc_html_e( 'Cache Status:', 'multichat-gpt' ); ?></th>
+									<td><span style="color: green;">✓ <?php esc_html_e( 'Active', 'multichat-gpt' ); ?></span></td>
+								</tr>
+							</tbody>
+						</table>
+						<?php
+					} else {
+						?>
+						<p><em><?php esc_html_e( 'No knowledge base data cached.', 'multichat-gpt' ); ?></em></p>
+						<?php
+					}
+					?>
+				</div>
+			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Handle scan sitemap REST API request
+	 *
+	 * @param WP_REST_Request $request REST request object
+	 * @return WP_REST_Response
+	 */
+	public function handle_scan_sitemap( $request ) {
+		$sitemap_url   = get_option( 'multichat_gpt_sitemap_url' );
+		$force_refresh = $request->get_param( 'force_refresh' );
+		$post_types    = $request->get_param( 'post_types' );
+
+		if ( empty( $sitemap_url ) ) {
+			return new WP_REST_Response(
+				[
+					'success' => false,
+					'message' => __( 'Sitemap URL not configured', 'multichat-gpt' ),
+				],
+				400
+			);
+		}
+
+		// Clear cache if force refresh
+		if ( $force_refresh ) {
+			$this->kb_builder->clear_cache();
+		}
+
+		// Scan sitemap
+		$urls = $this->sitemap_scanner->scan( $sitemap_url, $post_types );
+
+		if ( is_wp_error( $urls ) ) {
+			return new WP_REST_Response(
+				[
+					'success' => false,
+					'message' => $urls->get_error_message(),
+				],
+				500
+			);
+		}
+
+		// Get unique URLs
+		$urls = $this->sitemap_scanner->get_unique_urls( $urls );
+
+		// Crawl URLs (limit to 50)
+		$crawl_results = $this->content_crawler->crawl_multiple( $urls, 50 );
+
+		// Build knowledge base
+		$kb_data = $this->kb_builder->build( $crawl_results['success'] );
+
+		// Save to cache
+		$cache_duration = get_option( 'multichat_gpt_kb_cache_duration', 604800 );
+		$this->kb_builder->set_cache_duration( $cache_duration );
+		$this->kb_builder->save_to_cache( $kb_data );
+
+		return new WP_REST_Response(
+			[
+				'success'      => true,
+				'total_pages'  => $kb_data['metadata']['total_pages'],
+				'total_chunks' => $kb_data['metadata']['total_chunks'],
+				'failed_urls'  => count( $crawl_results['failed'] ),
+			]
+		);
+	}
+
+	/**
+	 * AJAX handler for scanning sitemap
+	 */
+	public function ajax_scan_sitemap() {
+		// Verify nonce
+		check_ajax_referer( 'multichat_kb_nonce', 'nonce' );
+
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions', 'multichat-gpt' ) ] );
+		}
+
+		$sitemap_url   = get_option( 'multichat_gpt_sitemap_url' );
+		$force_refresh = filter_input( INPUT_POST, 'force_refresh', FILTER_VALIDATE_BOOLEAN );
+
+		if ( empty( $sitemap_url ) ) {
+			wp_send_json_error( [ 'message' => __( 'Sitemap URL not configured', 'multichat-gpt' ) ] );
+		}
+
+		// Clear cache if force refresh
+		if ( $force_refresh ) {
+			$this->kb_builder->clear_cache();
+		}
+
+		// Scan sitemap
+		$urls = $this->sitemap_scanner->scan( $sitemap_url, [ 'page' ] );
+
+		if ( is_wp_error( $urls ) ) {
+			wp_send_json_error( [ 'message' => $urls->get_error_message() ] );
+		}
+
+		// Get unique URLs
+		$urls = $this->sitemap_scanner->get_unique_urls( $urls );
+
+		// Crawl URLs (limit to 50)
+		$crawl_results = $this->content_crawler->crawl_multiple( $urls, 50 );
+
+		// Build knowledge base
+		$kb_data = $this->kb_builder->build( $crawl_results['success'] );
+
+		// Save to cache
+		$cache_duration = get_option( 'multichat_gpt_kb_cache_duration', 604800 );
+		$this->kb_builder->set_cache_duration( $cache_duration );
+		$this->kb_builder->save_to_cache( $kb_data );
+
+		wp_send_json_success(
+			[
+				'total_pages'  => $kb_data['metadata']['total_pages'],
+				'total_chunks' => $kb_data['metadata']['total_chunks'],
+				'last_updated' => $kb_data['metadata']['last_updated'],
+				'failed_urls'  => count( $crawl_results['failed'] ),
+			]
+		);
+	}
+
+	/**
+	 * AJAX handler for clearing KB cache
+	 */
+	public function ajax_clear_kb_cache() {
+		// Verify nonce
+		check_ajax_referer( 'multichat_kb_nonce', 'nonce' );
+
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions', 'multichat-gpt' ) ] );
+		}
+
+		// Clear cache
+		$result = $this->kb_builder->clear_cache();
+
+		if ( $result ) {
+			wp_send_json_success( [ 'message' => __( 'Cache cleared successfully', 'multichat-gpt' ) ] );
+		} else {
+			wp_send_json_error( [ 'message' => __( 'Failed to clear cache', 'multichat-gpt' ) ] );
+		}
 	}
 
 	/**
