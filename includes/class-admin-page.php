@@ -38,7 +38,6 @@ class MultiChat_Admin_Page {
 				<?php self::render_single_language_interface( $sitemap_url ); ?>
 			<?php endif; ?>
 
-			<?php self::render_faq_section( $current_language ); ?>
 			<?php self::render_settings_form(); ?>
 		</div>
 
@@ -242,44 +241,6 @@ class MultiChat_Admin_Page {
 	}
 
 	/**
-	 * Render FAQ management section
-	 */
-	private static function render_faq_section( $current_language ) {
-		?>
-		<div style="background: #f0f7ff; padding: 20px; margin: 20px 0; border-left: 4px solid #0066cc;">
-			<h2><?php esc_html_e( 'Custom FAQ Management', 'multichat-gpt' ); ?></h2>
-			<p><?php esc_html_e( 'Add custom Q&A pairs that don\'t rely on sitemap content.', 'multichat-gpt' ); ?></p>
-
-			<div style="margin: 20px 0;">
-				<h3><?php esc_html_e( 'Add New FAQ', 'multichat-gpt' ); ?></h3>
-				<table style="width: 100%;">
-					<tr>
-						<td style="padding: 10px;"><label><?php esc_html_e( 'Question:', 'multichat-gpt' ); ?></label></td>
-						<td style="padding: 10px;"><input type="text" id="faq-title" style="width: 100%;" placeholder="Enter FAQ question"></td>
-					</tr>
-					<tr>
-						<td style="padding: 10px; vertical-align: top;"><label><?php esc_html_e( 'Answer:', 'multichat-gpt' ); ?></label></td>
-						<td style="padding: 10px;"><textarea id="faq-content" style="width: 100%; height: 120px;" placeholder="Enter FAQ answer"></textarea></td>
-					</tr>
-					<tr>
-						<td colspan="2" style="padding: 10px;">
-							<button id="faq-add-btn" class="button button-primary" style="padding: 10px 20px;">
-								<?php esc_html_e( 'Add FAQ', 'multichat-gpt' ); ?>
-							</button>
-						</td>
-					</tr>
-				</table>
-			</div>
-
-			<div id="faq-list" style="margin-top: 30px;">
-				<h3><?php esc_html_e( 'Existing FAQs', 'multichat-gpt' ); ?></h3>
-				<div id="faq-items"></div>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
 	 * Render settings form
 	 */
 	private static function render_settings_form() {
@@ -301,96 +262,6 @@ class MultiChat_Admin_Page {
 		?>
 		jQuery(document).ready(function($) {
 			var currentLanguage = '<?php echo esc_js( $current_language ); ?>';
-
-			// Load FAQs
-			function loadFAQs() {
-				$.ajax({
-					url: ajaxurl,
-					method: 'GET',
-					data: {
-						action: 'multichat_get_faqs',
-						language: currentLanguage
-					},
-					success: function(response) {
-						if (response.success) {
-							var html = '<ul style="list-style: none; padding: 0;">';
-							if (response.data.length === 0) {
-								html += '<li style="padding: 15px; background: white; margin-bottom: 10px; border-left: 3px solid #999; color: #999;">No FAQs yet</li>';
-							} else {
-								$.each(response.data, function(i, faq) {
-									html += '<li style="padding: 15px; background: white; margin-bottom: 10px; border-left: 3px solid #0066cc;">';
-									html += '<strong>' + faq.title + '</strong><br>';
-									html += '<small style="color: #666;">' + faq.content.substring(0, 100) + '...</small><br>';
-									html += '<button class="faq-delete-btn button button-small button-secondary" data-faq-id="' + faq.id + '" style="margin-top: 10px;">Delete</button>';
-									html += '</li>';
-								});
-							}
-							html += '</ul>';
-							$('#faq-items').html(html);
-
-							// Bind delete buttons
-							$('.faq-delete-btn').on('click', function() {
-								if (!confirm('<?php echo esc_js( __( 'Delete this FAQ?', 'multichat-gpt' ) ); ?>')) return;
-								deleteFAQ($(this).data('faq-id'));
-							});
-						}
-					}
-				});
-			}
-
-			// Add FAQ
-			$('#faq-add-btn').on('click', function() {
-				var title = $('#faq-title').val();
-				var content = $('#faq-content').val();
-
-				if (!title || !content) {
-					alert('<?php echo esc_js( __( 'Please fill in all fields', 'multichat-gpt' ) ); ?>');
-					return;
-				}
-
-				$.ajax({
-					url: ajaxurl,
-					method: 'POST',
-					data: {
-						action: 'multichat_create_faq',
-						nonce: '<?php echo wp_create_nonce( 'multichat_faq_nonce' ); ?>',
-						title: title,
-						content: content,
-						language: currentLanguage
-					},
-					success: function(response) {
-						if (response.success) {
-							alert('<?php echo esc_js( __( 'FAQ added successfully!', 'multichat-gpt' ) ); ?>');
-							$('#faq-title').val('');
-							$('#faq-content').val('');
-							loadFAQs();
-						} else {
-							alert('Error: ' + response.data);
-						}
-					}
-				});
-			});
-
-			// Delete FAQ
-			function deleteFAQ(faqId) {
-				$.ajax({
-					url: ajaxurl,
-					method: 'POST',
-					data: {
-						action: 'multichat_delete_faq',
-						nonce: '<?php echo wp_create_nonce( 'multichat_faq_nonce' ); ?>',
-						faq_id: faqId
-					},
-					success: function(response) {
-						if (response.success) {
-							loadFAQs();
-						}
-					}
-				});
-			}
-
-			// Initial load
-			loadFAQs();
 
 			<?php if ( $is_wpml_active ) : ?>
 				// WPML handlers

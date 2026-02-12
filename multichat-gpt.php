@@ -748,14 +748,14 @@ class MultiChat_GPT {
 	 * Add admin menu
 	 */
 	public function add_admin_menu() {
-		// Top-level menu
+		// Top-level menu with icon
 		add_menu_page(
 			__( 'MultiChat GPT', 'multichat-gpt' ),
 			__( 'MultiChat GPT', 'multichat-gpt' ),
 			'manage_options',
 			'multichat-gpt',
 			[ $this, 'render_admin_page' ],
-			'dashicons-comments',
+			'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTIwIDJIN2EzIDMgMCAwIDAtMyAzdjk0YzAgMzAwIDAgLTEgNi0xaDZsNCA0aDZ2LTRoN2EzIDMgMCAwIDAgMy0zVjVhMyAzIDAgMCAwLTMtM3pNOSAxMWE0IDQgMCAwIDEtMzAgMDRhNCA0IDAgMCAxIDQtNHptNiAwYTQgNCAwIDAgMSAwIDhhNCA0IDAgMCAxIDAtOHptNiAwYTQgNCAwIDAgMSA4IDRhNCA0IDAgMCAxLTQgNHoiLz48L3N2Zz4=',
 			25
 		);
 
@@ -768,7 +768,7 @@ class MultiChat_GPT {
 			'multichat-gpt'
 		);
 
-		// Chat FAQs submenu
+		// Chat FAQs submenu (points to FAQ post type)
 		add_submenu_page(
 			'multichat-gpt',
 			__( 'Chat FAQs', 'multichat-gpt' ),
