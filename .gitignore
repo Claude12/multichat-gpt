@@ -1,0 +1,30 @@
+# WordPress
+.DS_Store
+thumbs.db
+
+# Plugin specific
+*.log
+*.bak
+*.swp
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Node modules (if using build tools)
+node_modules/
+npm-debug.log
+
+# Composer
+/vendor/
+
+# Build files
+/dist/
+/.tmp/
+
+# OS files
+Thumbs.db
+Desktop.ini

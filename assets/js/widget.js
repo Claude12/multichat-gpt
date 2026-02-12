@@ -1,7 +1,9 @@
 /**
  * MultiChat GPT Frontend Widget
- * Handles the floating chat interface
- * FIXED: Removed nonce requirement for proper REST API communication
+ * Optimized with debouncing, event delegation, and performance improvements
+ *
+ * @package MultiChatGPT
+ * @since 1.0.0
  */
 
 (function () {
@@ -11,7 +13,8 @@
 	const config = {
 		restUrl: multiChatGPT?.restUrl || '/wp-json/multichat/v1/ask',
 		language: multiChatGPT?.language || 'en',
-		position: localStorage.getItem('multichat_position') || 'bottom-right',
+		position: multiChatGPT?.position || 'bottom-right',
+		debounceDelay: 300,
 	};
 
 	// Chat state
@@ -19,6 +22,19 @@
 		isOpen: false,
 		messages: [],
 		isLoading: false,
+	};
+
+	// Debounce utility function
+	const debounce = (func, wait) => {
+		let timeout;
+		return function executedFunction(...args) {
+			const later = () => {
+				clearTimeout(timeout);
+				func(...args);
+			};
+			clearTimeout(timeout);
+			timeout = setTimeout(later, wait);
+		};
 	};
 
 	/**
@@ -76,31 +92,65 @@
 	}
 
 	/**
-	 * Attach event listeners
+	 * Attach event listeners using event delegation
 	 */
 	function attachEventListeners() {
-		const toggleBtn = document.getElementById('multichat-toggle-btn');
-		const closeBtn = document.getElementById('multichat-close-btn');
-		const sendBtn = document.getElementById('multichat-send-btn');
-		const input = document.getElementById('multichat-input');
+		const container = document.getElementById('multichat-gpt-widget');
+		if (!container) return;
 
-		toggleBtn?.addEventListener('click', toggleChat);
-		closeBtn?.addEventListener('click', closeChat);
-		sendBtn?.addEventListener('click', sendMessage);
-
-		input?.addEventListener('keypress', (e) => {
-			if (e.key === 'Enter' && !e.shiftKey && !chatState.isLoading) {
-				sendMessage();
-			}
-		});
+		// Use event delegation on container for better performance
+		container.addEventListener('click', handleClick);
+		container.addEventListener('keypress', handleKeyPress);
 
 		// Enable input after widget loads
 		setTimeout(() => {
-			if (input) {
+			const input = document.getElementById('multichat-input');
+			const sendBtn = document.getElementById('multichat-send-btn');
+			if (input && sendBtn) {
 				input.disabled = false;
 				sendBtn.disabled = false;
 			}
-		}, 500);
+		}, 100);
+	}
+
+	/**
+	 * Handle click events with event delegation
+	 */
+	function handleClick(e) {
+		const target = e.target;
+
+		// Toggle button click
+		if (target.id === 'multichat-toggle-btn' || target.closest('#multichat-toggle-btn')) {
+			e.preventDefault();
+			toggleChat();
+			return;
+		}
+
+		// Close button click
+		if (target.id === 'multichat-close-btn' || target.closest('#multichat-close-btn')) {
+			e.preventDefault();
+			closeChat();
+			return;
+		}
+
+		// Send button click
+		if (target.id === 'multichat-send-btn' || target.closest('#multichat-send-btn')) {
+			e.preventDefault();
+			if (!chatState.isLoading) {
+				sendMessage();
+			}
+			return;
+		}
+	}
+
+	/**
+	 * Handle keypress events
+	 */
+	function handleKeyPress(e) {
+		if (e.target.id === 'multichat-input' && e.key === 'Enter' && !e.shiftKey && !chatState.isLoading) {
+			e.preventDefault();
+			sendMessage();
+		}
 	}
 
 	/**
@@ -200,24 +250,26 @@
 	}
 
 	/**
-	 * Add message to chat UI
+	 * Add message to chat UI with optimized DOM operations
 	 */
 	function addMessageToUI(message, sender = 'user') {
 		const messagesContainer = document.getElementById('multichat-messages');
 		if (!messagesContainer) return;
 
-		const messageEl = document.createElement('div');
-		messageEl.className = `multichat-message multichat-${sender}`;
+		// Use template literals for efficient DOM creation
+		const messageHTML = `
+			<div class="multichat-message multichat-${sender}">
+				<div class="multichat-message-content">${escapeHtml(message)}</div>
+			</div>
+		`;
 
-		const messageContent = document.createElement('div');
-		messageContent.className = 'multichat-message-content';
-		messageContent.textContent = message;
+		// Insert HTML in one operation
+		messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
 
-		messageEl.appendChild(messageContent);
-		messagesContainer.appendChild(messageEl);
-
-		// Auto-scroll to bottom
-		messagesContainer.scrollTop = messagesContainer.scrollHeight;
+		// Auto-scroll to bottom with debounce
+		requestAnimationFrame(() => {
+			messagesContainer.scrollTop = messagesContainer.scrollHeight;
+		});
 
 		// Store in chat state
 		chatState.messages.push({
@@ -228,22 +280,31 @@
 	}
 
 	/**
-	 * Update input state based on loading
+	 * Escape HTML to prevent XSS
+	 */
+	function escapeHtml(text) {
+		const div = document.createElement('div');
+		div.textContent = text;
+		return div.innerHTML;
+	}
+
+	/**
+	 * Update input state based on loading - optimized
 	 */
 	function updateInputState() {
 		const input = document.getElementById('multichat-input');
 		const sendBtn = document.getElementById('multichat-send-btn');
 
-		if (input && sendBtn) {
-			input.disabled = chatState.isLoading;
-			sendBtn.disabled = chatState.isLoading;
+		if (!input || !sendBtn) return;
 
-			if (chatState.isLoading) {
-				sendBtn.textContent = getTranslation('loadingButton');
-			} else {
-				sendBtn.textContent = getTranslation('sendButton');
-			}
-		}
+		// Batch DOM updates
+		const isLoading = chatState.isLoading;
+		input.disabled = isLoading;
+		sendBtn.disabled = isLoading;
+		sendBtn.textContent = isLoading ? getTranslation('loadingButton') : getTranslation('sendButton');
+
+		// Add/remove loading class for CSS animations
+		sendBtn.classList.toggle('multichat-loading', isLoading);
 	}
 
 	/**
