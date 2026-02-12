@@ -103,15 +103,13 @@ class MultiChat_GPT_REST_Endpoints {
 	 * @return bool|WP_Error True if valid, WP_Error otherwise.
 	 */
 	public static function validate_language( $value, $request, $param ) {
-		$allowed_languages = array( 'en', 'ar', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja' );
-
-		if ( ! in_array( $value, $allowed_languages, true ) ) {
+		if ( ! MultiChat_GPT_Utility::is_language_supported( $value ) ) {
 			return new WP_Error(
 				'invalid_language',
 				/* translators: %s: allowed languages */
 				sprintf(
 					__( 'Language must be one of: %s', 'multichat-gpt' ),
-					implode( ', ', $allowed_languages )
+					implode( ', ', MultiChat_GPT_Utility::get_supported_languages() )
 				),
 				array( 'status' => 400 )
 			);

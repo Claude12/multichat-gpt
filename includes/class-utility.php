@@ -21,6 +21,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MultiChat_GPT_Utility {
 
 	/**
+	 * Supported languages
+	 *
+	 * @var array
+	 */
+	private const SUPPORTED_LANGUAGES = array( 'en', 'ar', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja' );
+
+	/**
+	 * Get supported languages
+	 *
+	 * @return array Array of supported language codes.
+	 */
+	public static function get_supported_languages(): array {
+		return self::SUPPORTED_LANGUAGES;
+	}
+
+	/**
+	 * Check if language is supported
+	 *
+	 * @param string $language Language code to check.
+	 * @return bool True if supported, false otherwise.
+	 */
+	public static function is_language_supported( string $language ): bool {
+		return in_array( $language, self::SUPPORTED_LANGUAGES, true );
+	}
+
+	/**
 	 * Get client IP address
 	 *
 	 * Attempts to get the real client IP from various headers

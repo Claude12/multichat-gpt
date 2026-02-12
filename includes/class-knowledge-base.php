@@ -219,16 +219,12 @@ If the user\'s question is not covered in the knowledge base, politely let them 
 	 * @return void
 	 */
 	public static function clear_cache(): void {
-		global $wpdb;
+		// Get all transient keys for knowledge base
+		$languages = MultiChat_GPT_Utility::get_supported_languages();
 
-		// Delete all KB transients
-		$wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$wpdb->esc_like( '_transient_multichat_kb_' ) . '%',
-				$wpdb->esc_like( '_transient_timeout_multichat_kb_' ) . '%'
-			)
-		);
+		foreach ( $languages as $lang ) {
+			delete_transient( 'multichat_kb_' . $lang );
+		}
 
 		MultiChat_GPT_Logger::info( 'Knowledge base cache cleared' );
 	}

@@ -12,7 +12,6 @@
 		restUrl: multiChatGPT?.restUrl || '/wp-json/multichat/v1/ask',
 		language: multiChatGPT?.language || 'en',
 		position: multiChatGPT?.position || localStorage.getItem('multichat_position') || 'bottom-right',
-		debounceDelay: 300,
 	};
 
 	// Chat state
@@ -180,21 +179,6 @@
 			elements.toggleBtn.setAttribute('aria-label', getTranslation('openAria'));
 			chatState.isOpen = false;
 		}
-	}
-
-	/**
-	 * Debounce function
-	 */
-	function debounce(func, wait) {
-		let timeout;
-		return function executedFunction(...args) {
-			const later = () => {
-				clearTimeout(timeout);
-				func(...args);
-			};
-			clearTimeout(timeout);
-			timeout = setTimeout(later, wait);
-		};
 	}
 
 	/**

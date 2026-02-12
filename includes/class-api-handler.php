@@ -104,7 +104,9 @@ class MultiChat_GPT_API_Handler {
 
 		for ( $attempt = 0; $attempt <= self::MAX_RETRIES; $attempt++ ) {
 			if ( $attempt > 0 ) {
-				// Wait before retry (exponential backoff)
+				// Wait before retry with exponential backoff
+				// Note: sleep() is intentional here for retry logic
+				// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_sleep
 				sleep( pow( 2, $attempt - 1 ) );
 				MultiChat_GPT_Logger::debug( "Retry attempt {$attempt}" );
 			}
@@ -220,12 +222,15 @@ class MultiChat_GPT_API_Handler {
 	/**
 	 * Clear API cache
 	 *
+	 * Clears all cached API responses by deleting transients with the multichat_api_ prefix
+	 *
 	 * @return void
 	 */
 	public static function clear_cache(): void {
 		global $wpdb;
 
-		// Delete all transients with our prefix
+		// Delete all transients with our prefix using direct SQL
+		// Note: WordPress doesn't provide a built-in method to delete transients by prefix
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",

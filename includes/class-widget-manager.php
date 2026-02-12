@@ -113,7 +113,7 @@ class MultiChat_GPT_Widget_Manager {
 	 * @return array Array of supported language codes.
 	 */
 	public static function get_supported_languages(): array {
-		return array( 'en', 'ar', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja' );
+		return MultiChat_GPT_Utility::get_supported_languages();
 	}
 
 	/**
@@ -123,6 +123,6 @@ class MultiChat_GPT_Widget_Manager {
 	 * @return bool True if supported, false otherwise.
 	 */
 	public static function is_language_supported( string $language ): bool {
-		return in_array( $language, self::get_supported_languages(), true );
+		return MultiChat_GPT_Utility::is_language_supported( $language );
 	}
 }
