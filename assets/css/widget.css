@@ -1,5 +1,6 @@
 /**
  * MultiChat GPT Widget Styles
+ * FIXED: Mobile responsiveness — chat window uses fixed positioning on small screens
  */
 
 /* Widget Container */
@@ -66,13 +67,16 @@
 	display: none;
 }
 
-/* Chat Window */
+/* ═══════════════════════════════════════════ */
+/* Chat Window — DESKTOP (default)            */
+/* ═══════════════════════════════════════════ */
 .multichat-chat-window {
 	position: absolute;
 	bottom: 80px;
 	right: 0;
 	width: 380px;
 	height: 500px;
+	max-height: calc(100vh - 120px);
 	background-color: var(--bg-color);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
@@ -251,12 +255,14 @@
 	font-family: inherit;
 	resize: none;
 	transition: border-color 0.2s ease;
+	/* Prevent iOS zoom on focus */
+	font-size: 16px;
 }
 
 .multichat-input:focus {
 	outline: none;
 	border-color: var(--primary-color);
-	box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+	box-shadow: 0 0 0 3px rgba(0, 158, 226, 0.15);
 }
 
 .multichat-input:disabled {
@@ -287,27 +293,74 @@
 	cursor: not-allowed;
 }
 
-/* Responsive Design */
+/* ═══════════════════════════════════════════ */
+/* RESPONSIVE — Mobile (≤ 480px)              */
+/* ═══════════════════════════════════════════ */
 @media (max-width: 480px) {
+	/*
+	 * On mobile the chat window becomes FIXED and full-width
+	 * so it never overflows the viewport regardless of
+	 * which corner the toggle button sits in.
+	 */
 	.multichat-chat-window {
-		width: calc(100vw - 32px);
-		height: 60vh;
-		max-height: 500px;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		width: 100%;
+		height: 75vh;
+		max-height: none;
+		border-radius: var(--radius) var(--radius) 0 0;
+		z-index: 9999999;
+	}
+
+	/* Keep the toggle button in its corner */
+	#multichat-gpt-widget.bottom-right,
+	#multichat-gpt-widget.bottom-left {
+		bottom: 16px;
+	}
+
+	#multichat-gpt-widget.bottom-right {
+		right: 16px;
+		left: auto;
+	}
+
+	#multichat-gpt-widget.bottom-left {
+		left: 16px;
+		right: auto;
+	}
+
+	/* Round only the top corners on mobile */
+	.multichat-header {
+		border-radius: var(--radius) var(--radius) 0 0;
+	}
+
+	/* No bottom radius on mobile — flush with screen edge */
+	.multichat-input-area {
+		border-radius: 0;
+		/* Safe area for iPhones with home indicator */
+		padding-bottom: calc(var(--spacing) + env(safe-area-inset-bottom, 0px));
 	}
 
 	.multichat-message-content {
 		max-width: 85%;
 	}
+}
 
-	#multichat-gpt-widget.bottom-right,
-	#multichat-gpt-widget.bottom-left {
-		bottom: 16px;
-		right: 16px;
-		left: auto;
+/* ═══════════════════════════════════════════ */
+/* RESPONSIVE — Tablet / small desktop        */
+/* ═══════════════════════════════════════════ */
+@media (min-width: 481px) and (max-width: 768px) {
+	.multichat-chat-window {
+		width: 340px;
+		height: 450px;
+		max-height: calc(100vh - 120px);
 	}
 }
 
-/* Dark Mode Support */
+/* ═══════════════════════════════════════════ */
+/* Dark Mode Support                          */
+/* ═══════════════════════════════════════════ */
 @media (prefers-color-scheme: dark) {
 	#multichat-gpt-widget {
 		--text-color: #f3f4f6;
@@ -327,6 +380,6 @@
 	}
 
 	.multichat-input:focus {
-		box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+		box-shadow: 0 0 0 3px rgba(0, 158, 226, 0.25);
 	}
 }

@@ -4,6 +4,8 @@
  * FIXED: Removed nonce requirement for proper REST API communication
  * FIXED: Widget position now comes from admin settings
  * FIXED: Handles rate-limit (429) responses gracefully
+ * FIXED: Removed previous chat history feature
+ * FIXED: Mobile responsiveness — chat window stays on screen
  */
 
 (function () {
@@ -30,7 +32,6 @@
 	function init() {
 		createWidgetHTML();
 		attachEventListeners();
-		loadChatHistory();
 	}
 
 	/**
@@ -194,7 +195,6 @@
 				);
 			} else if (data.success) {
 				addMessageToUI(data.message, 'assistant');
-				saveChatToHistory(message, data.message);
 			} else {
 				addMessageToUI(
 					data.message || getTranslation('errorMessage'),
@@ -230,7 +230,7 @@
 		// Auto-scroll to bottom
 		messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-		// Store in chat state
+		// Store in chat state (session only, not localStorage)
 		chatState.messages.push({
 			sender,
 			message,
@@ -258,53 +258,6 @@
 	}
 
 	/**
-	 * Save chat to local storage
-	 */
-	function saveChatToHistory(userMsg, assistantMsg) {
-		try {
-			const history = JSON.parse(
-				localStorage.getItem('multichat_history') || '[]'
-			);
-			history.push({
-				user: userMsg,
-				assistant: assistantMsg,
-				timestamp: new Date().toISOString(),
-			});
-
-			// Keep last 20 messages
-			if (history.length > 20) {
-				history.shift();
-			}
-
-			localStorage.setItem('multichat_history', JSON.stringify(history));
-		} catch (error) {
-			console.error('Failed to save chat history:', error);
-		}
-	}
-
-	/**
-	 * Load chat history from local storage
-	 */
-	function loadChatHistory() {
-		try {
-			const history = JSON.parse(
-				localStorage.getItem('multichat_history') || '[]'
-			);
-
-			if (history.length > 0) {
-				const welcomeMsg = document.createElement('div');
-				welcomeMsg.className = 'multichat-message multichat-info';
-				welcomeMsg.textContent = getTranslation('previousChats');
-
-				const messagesContainer = document.getElementById('multichat-messages');
-				messagesContainer?.appendChild(welcomeMsg);
-			}
-		} catch (error) {
-			console.error('Failed to load chat history:', error);
-		}
-	}
-
-	/**
 	 * Get translation by key
 	 */
 	function getTranslation(key) {
@@ -318,7 +271,6 @@
 					'Sorry, an error occurred. Please try again later.',
 				rateLimitMessage:
 					'Too many requests. Please wait a moment and try again.',
-				previousChats: 'Previous chat history loaded.',
 			},
 			ar: {
 				chatTitle: 'دعم الدردشة',
@@ -328,7 +280,6 @@
 				errorMessage: 'عذرًا، حدث خطأ. يرجى المحاولة لاحقًا.',
 				rateLimitMessage:
 					'طلبات كثيرة جدًا. يرجى الانتظار لحظة والمحاولة مرة أخرى.',
-				previousChats: 'تم تحميل سجل الدردشة السابق.',
 			},
 			es: {
 				chatTitle: 'Soporte de Chat',
@@ -338,7 +289,6 @@
 				errorMessage: 'Lo sentimos, ocurrió un error. Intente más tarde.',
 				rateLimitMessage:
 					'Demasiadas solicitudes. Espere un momento e intente de nuevo.',
-				previousChats: 'Se cargó el historial de chat anterior.',
 			},
 			fr: {
 				chatTitle: 'Support de Chat',
@@ -348,7 +298,6 @@
 				errorMessage: 'Désolé, une erreur s\'est produite. Veuillez réessayer plus tard.',
 				rateLimitMessage:
 					'Trop de requêtes. Veuillez patienter un moment et réessayer.',
-				previousChats: 'L\'historique du chat précédent a été chargé.',
 			},
 		};
 
