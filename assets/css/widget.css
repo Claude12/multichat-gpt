@@ -4,9 +4,9 @@
 
 /* Widget Container */
 #multichat-gpt-widget {
-	--primary-color: #2563eb;
-	--primary-hover: #1d4ed8;
-	--text-color: #1f2937;
+	--primary-color: #009EE2;
+	--primary-hover: #324A6D;
+	--text-color: #324A6D;
 	--bg-color: #ffffff;
 	--border-color: #e5e7eb;
 	--shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
